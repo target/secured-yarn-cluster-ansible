@@ -1,0 +1,17 @@
+---
+- name: Configure zookeeper-env.sh
+  template: src=zookeeper-env.sh.j2 dest={{ zookeeper_conf_dir }}/conf/zookeeper-env.sh owner=zookeeper group=zookeeper
+  tags: deploy
+  notify:
+    - Restart zookeeper
+  when: zookeeper_env is defined and zookeeper_env|length > 0
+
+- name: Update the log4j config with saner production values
+  template: src=log4j.properties.j2 dest={{ zookeeper_conf_dir }}/conf/log4j.properties
+  tags: deploy
+  notify:
+    - Restart zookeeper
+
+- name: Enable zookeeper service
+  service: name=zookeeper enabled=yes
+  tags: deploy

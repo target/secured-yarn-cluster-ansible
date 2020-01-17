@@ -1,0 +1,9 @@
+# if vars are not defined in the playbook then default variable value will be loaded
+
+hours: "*/2"
+
+username: "root"
+
+# You can add 'n' number of logs directories for cleaning/purging the old logs
+jobs:
+  - "cd /var/log/audit && rm -f audit.log.*"

@@ -1,0 +1,23 @@
+tickTime={{ tick_time }}
+dataDir={{ data_dir }}
+dataLogDir={{ log_dir }}
+clientPort={{ client_port }}
+initLimit={{ init_limit }}
+syncLimit={{ sync_limit }}
+maxClientCnxns={{ zookeeper_max_client_connections }}
+{% if zookeeper_autopurge_purgeInterval > 0 %}
+autopurge.purgeInterval={{ zookeeper_autopurge_purgeInterval }}
+autopurge.snapRetainCount={{ zookeeper_autopurge_snapRetainCount }}
+{% endif %}
+
+{% for server in zookeeper_hosts %}
+{% if server.host is defined %}
+{% if inventory_hostname == server.host %}
+server.{{server.id}}=0.0.0.0:{{zookeeper_cluster_ports}}
+{% else %}
+server.{{server.id}}={{server.host}}:{{zookeeper_cluster_ports}}
+{% endif %}
+{% else %}
+server.{{loop.index}}={{server}}:{{zookeeper_cluster_ports}}
+{% endif %}
+{% endfor %}

@@ -1,0 +1,8 @@
+---
+    - name: creating key
+      os_keypair:
+        name: "{{ sshKeyName }}"
+        state: "{{ state }}"
+        cacert: "{{ cacert }}"
+        public_key_file: "{{ publicKeyFile }}"
+      register: out

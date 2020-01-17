@@ -1,0 +1,111 @@
+---
+
+ - name: Create Directories for Hadoop Set Up
+   file:
+     name: "{{ item }}"
+     state: directory
+     owner: "{{userName}}"
+     group: root
+     mode: 0750
+   with_items:
+     - "{{ livy_root_dir }}"
+     - "{{ spark_root_dir }}"
+     - "{{ flink_root_dir }}"
+     - "{{ HADOOP_CONF_DIR }}"
+     - "{{ keytab_dir }}"
+
+
+ - name: "Download livy-{{ livy_version }}"
+   get_url:
+     url: "{{ livy_artifact_repo_url }}"
+     dest: "{{ root_dir }}/{{ livy_artifact_name}}-{{ livy_version }}-incubating-SNAPSHOT-bin.zip"
+     force: no
+     owner: "{{ userName }}"
+     group: "{{ userName }}"
+   register: result
+   until: result is success
+   retries: 5
+   delay: 5
+
+ - name: Unarchive livy tgz
+   unarchive:
+     src: "{{ root_dir }}/{{ livy_artifact_name}}-{{ livy_version }}-incubating-SNAPSHOT-bin.zip"
+     dest: "{{ livy_root_dir }}"
+     creates: "{{ livy_root_dir }}/{{ livy_artifact_name}}-{{ livy_version }}"
+     owner: "{{ userName }}"
+     group: "{{ userName }}"
+     mode: 0750
+     remote_src: yes
+
+ - name: Rename the livy folder name
+   command: mv -f {{ livy_root_dir }}/{{  livy_default_name }} {{ livy_root_dir }}/{{ livy_artifact_name}}-{{ livy_version }}
+   args:
+     creates: "{{ livy_root_dir }}/{{ livy_artifact_name}}-{{ livy_version }}"
+
+ - name: "Download spark-{{ spark_version }}"
+   get_url:
+     url: "{{ spark_artifact_repo_url }}/{{ spark_artifact_name }}-{{ item }}/{{ spark_artifact_name }}-{{ item }}-bin-hadoop2.7.tgz"
+     dest: "{{ root_dir }}/{{ spark_artifact_name}}-{{ item }}-bin-hadoop2.7.tgz"
+     force: no
+     owner: "{{ userName }}"
+     group: "{{ userName }}"
+   register: result
+   until: result is success
+   retries: 5
+   delay: 5
+   with_items:
+     - "{{ list_of_spark_version }}"
+
+ - name: Unarchive spark tgz
+   unarchive:
+     src: "{{ root_dir }}/{{ spark_artifact_name}}-{{ item }}-bin-hadoop2.7.tgz"
+     dest: "{{ spark_root_dir }}"
+     creates: "{{ spark_root_dir }}/{{ spark_artifact_name}}-{{ item }}"
+     owner: "{{ userName }}"
+     group: "{{ userName }}"
+     mode: 0750
+     remote_src: yes
+   with_items:
+     - "{{ list_of_spark_version }}"
+
+ - debug:
+     msg: "Spark Latest Version : {{ list_of_spark_version[-1] }} "
+
+ - name: "Download flink-{{ flink_version }}"
+   get_url:
+     url: "{{ flink_artifact_repo_url }}"
+     dest: "{{ root_dir }}/{{ flink_artifact_name}}-{{ flink_version }}-bin-hadoop28-scala_2.12.tgz"
+     force: no
+     owner: "{{ userName }}"
+     group: "{{ userName }}"
+   register: result
+   until: result is success
+   retries: 5
+   delay: 5
+
+ - name: Unarchive flink tgz
+   unarchive:
+     src: "{{ root_dir }}/{{ flink_artifact_name}}-{{ flink_version }}-bin-hadoop28-scala_2.12.tgz"
+     dest: "{{ flink_root_dir }}"
+     creates: "{{ flink_root_dir }}/{{ flink_artifact_name}}-{{ flink_version }}"
+     owner: "{{ userName }}"
+     group: "{{ userName }}"
+     mode: 0750
+     remote_src: yes
+
+ - name: rename the spark folder path
+   shell: mv -f {{ spark_root_dir }}/{{ spark_artifact_name}}-{{ item }}-* {{ spark_root_dir }}/{{ spark_artifact_name}}-{{ item }}
+   ignore_errors: yes
+   become_user: "{{ userName }}"
+   with_items:
+     - "{{ list_of_spark_version }}"
+
+ - name: rename the livy folder path
+   shell: mv -f {{ livy_root_dir }}/{{ livy_artifact_name}}-{{ livy_version }}-* {{ livy_home_dir }}
+   ignore_errors: yes
+   become_user: "{{ userName }}"
+
+ - name: rename the flink folder path
+   shell: mv -f {{ flink_root_dir }}/{{ flink_artifact_name}}-{{ flink_version }}-* {{ flink_home_dir }}
+   ignore_errors: yes
+   become_user: "{{ userName }}"

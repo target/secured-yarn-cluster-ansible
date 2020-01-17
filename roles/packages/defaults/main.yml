@@ -1,0 +1,12 @@
+---
+
+yum_packages:
+  - python-devel 
+  - gcc 
+  - gcc-c++
+  - python-pip
+
+python_packages:
+  - pandas==0.19.2
+  - mock==2.0.0
+  - pyspark==2.4.0

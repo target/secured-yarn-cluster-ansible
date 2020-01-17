@@ -1,0 +1,12 @@
+---
+
+ - name: Configure Crontab File And Schedule For Every 2 Hours To Run
+   cron:
+     name: Delete Old Audit Logs
+     minute: 0
+     hour: "{{ hours }}"
+     job: "{{ item }}"
+     state: present
+     user: "{{ username }}"
+   with_items:
+     - "{{ jobs }}"  

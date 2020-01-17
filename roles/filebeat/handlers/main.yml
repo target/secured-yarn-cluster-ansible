@@ -1,0 +1,12 @@
+---
+
+- name: filebeat start
+  service: name=filebeat state=started
+
+- name: filebeat stop
+  service: name=filebeat state=stopped
+
+- name: filebeat restart
+  service: name=filebeat state=restarted
+
+# vi:ts=2:sw=2:et:ft=yaml

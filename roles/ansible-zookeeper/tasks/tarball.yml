@@ -1,0 +1,66 @@
+---
+- name: "Ensure the tarball dir exists at {{zookeeper_tarball_dir}}"
+  file: path={{zookeeper_tarball_dir}} state=directory
+
+- name: "Ensure the zookeeper dir exists at {{zookeeper_dir}}"
+  file: path={{zookeeper_dir}} state=directory
+
+# If the file exists already, the S3 call can experience errors
+- name: check whether the tarball is downloaded already
+  stat: path={{zookeeper_tarball_dir}}/zookeeper-{{zookeeper_version}}.tar.gz
+  register: zookeeper_tarball_script
+
+- name: Download zookeeper from S3
+  s3:
+    mode: get
+    bucket: "{{zookeeper_archive_s3_bucket}}"
+    object: "{{zookeeper_archive_s3_object}}"
+    dest: "{{zookeeper_tarball_dir}}/zookeeper-{{zookeeper_version}}.tar.gz"
+  register: zookeeper_s3_tarball_downloaded
+  tags: bootstrap
+  when: >
+    zookeeper_archive_s3_bucket is defined and
+    zookeeper_archive_s3_object is defined and
+    not zookeeper_tarball_script.stat.exists
+
+- name: Download zookeeper version.
+  get_url: url={{zookeeper_url}} dest={{zookeeper_tarball_dir}}/zookeeper-{{zookeeper_version}}.tar.gz
+  tags: bootstrap
+  register: zookeeper_tarball_downloaded
+  when: >
+    zookeeper_archive_s3_bucket is not defined or
+    zookeeper_archive_s3_object is not defined
+
+- name: Unpack tarball.
+  command: tar xf {{zookeeper_tarball_dir}}/zookeeper-{{zookeeper_version}}.tar.gz --strip-components=1 chdir={{zookeeper_dir}} creates={{zookeeper_dir}}/bin
+  tags: bootstrap
+
+- group: name=zookeeper system=yes
+- user: name=zookeeper group=zookeeper system=yes
+
+- name: Change ownership on zookeeper directory.
+  file: path={{zookeeper_dir}} state=directory owner=zookeeper group=zookeeper
+  tags: bootstrap
+
+- name: "Create zookeeper {{item}} directory."
+  file: path={{item}} state=directory owner=zookeeper group=zookeeper
+  tags: bootstrap
+  with_items:
+    - "{{data_dir}}"
+    - "{{log_dir}}"
+
+- name: Write myid file.
+  template: src=myid.j2 dest={{data_dir}}/myid owner=zookeeper group=zookeeper force="{{ zookeeper_force_myid }}"
+  tags: deploy
+  notify:
+    - Restart zookeeper
+
+- name: Configure zookeeper zoo.cfg
+  template: src=zoo.cfg.j2 dest={{ zookeeper_dir }}/conf/zoo.cfg owner=zookeeper group=zookeeper
+  tags: deploy
+  notify:
+    - Restart zookeeper
+
+- name: Add zookeeper's bin dir to the PATH
+  copy: content="export PATH=$PATH:{{zookeeper_dir}}/bin" dest="/etc/profile.d/zookeeper_path.sh" mode=755
+  when: zookeeper_register_path_env

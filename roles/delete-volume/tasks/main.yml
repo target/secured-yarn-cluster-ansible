@@ -1,0 +1,84 @@
+---
+
+    - name: Stop DFS service
+      shell: |
+             . ~/.bashrc && stop-dfs.sh
+      args:
+        executable: /bin/bash
+      become_user: "hdfs"
+      become: yes
+      delegate_to: "{{ item }}"
+      run_once: true
+      with_items:
+        - "{{ groups['masternode_group'] | first }}"
+
+    - name: Stop Yarn service
+      shell: |
+             . ~/.bashrc && stop-yarn.sh
+      args:
+        executable: /bin/bash
+      become_user: "yarn"
+      become: yes
+      delegate_to: "{{ item }}"
+      run_once: true
+      with_items:
+        - "{{ groups['masternode_group'] | first }}"
+
+    - name: umount volume in current host {{ansible_hostname}}
+      become: yes
+      become_user: root
+      mount:
+        path: /mnt/data
+        src: /dev/vdb
+        fstype: ext4
+        state: "{{ state }}"
+      run_once: true
+      delegate_to: "{{ item }}"
+      with_items:
+        - "{{ groups['datanode_group'] }}"
+
+    - name: Detach the data volume
+      os_server_volume:
+        state: "{{ state }}"
+        server: "{{ item.0 }}"
+        volume: "{{ item.0 }}-vol"
+        cacert: "{{ cacert }}"
+        device: "{{ volumePath }}"
+        wait: yes
+      with_together:
+        - "{{ groups['datanode_group'] }}"
+      register: detach_data_vol
+      async: 600
+      poll: 0
+
+    - name: Wait for detach vol For Data to complete
+      async_status: jid={{ item.ansible_job_id }}
+      register: os_jobs_attach_data_vol
+      until: os_jobs_attach_data_vol.finished
+      retries: 30
+      with_items:
+          - "{{ detach_data_vol.results }}"
+
+    - name: delete cinder volumes data
+      os_volume:
+        state: "{{ state }}"
+        display_name: "{{ item }}-vol"
+        size: "{{ dataVolumeSize }}"
+        availability_zone: "{{ volume_az }}"
+        volume_type: extended
+        cacert: "{{ cacert }}"
+        display_description: "{{ item }}"
+        wait: yes
+      with_items:
+        - "{{ groups['datanode_group'] }}"
+      register: os_volumes_data
+      async: 600
+      poll: 0
+
+    - name: Wait for Cinder Vol Deletion For Data to complete
+      async_status: jid={{ item.ansible_job_id }}
+      register: os_jobs_data_vol
+      until: os_jobs_data_vol.finished
+      retries: 30
+      with_items:
+          - "{{ os_volumes_data.results }}"

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>{{ HDFS_NODE }}</value>
+    </property>
+    <property>
+       <name>hadoop.security.authentication</name>
+       <value>kerberos</value>
+   </property>
+   <property>
+       <name>hadoop.security.authorization</name>
+       <value>true</value>
+   </property>
+  <property><name>hadoop.rpc.protection</name><value>authentication</value></property>
+  <property>
+     <name>hadoop.proxyuser.{{ nfs_username }}.groups</name>
+     <value>root,{{ groupname }}</value>
+     <description>
+        The '{{ nfs_username }}' user is allowed to proxy all members of the '{{ groupname }}' groups. Note that in most cases you will need to include the
+        group "root" because the user "root" (which usually belonges to "root" group) will
+        generally be the user that initially executes the mount on the NFS client system.
+        Set this to '*' to allow nfsserver user to proxy any group.
+    </description>
+  </property>
+
+  <property>
+     <name>hadoop.proxyuser.nfsserver.hosts</name>
+     <value>*</value>
+     <description>
+        This is the host where the nfs gateway is running. Set this to '*' to allow
+        requests from any hosts to be proxied.
+    </description>
+ </property>
+  
+</configuration>

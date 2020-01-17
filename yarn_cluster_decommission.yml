@@ -1,0 +1,12 @@
+---
+  - name: Decommissioning cluster
+    hosts: localhost
+    gather_facts: false
+    roles:
+      - { role: download-certs }
+      - { role: create-master-group }
+      - { role: create-data-group }
+      - { role: create-livy-group }
+      - { role: create-zk-group }
+      - { role: delete-volume }
+      - { role: cluster-decommission }

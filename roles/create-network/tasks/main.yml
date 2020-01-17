@@ -1,0 +1,9 @@
+---
+    - name: creating network
+      os_network:
+        name: "{{ networkName }}"
+        state: "{{ state }}"
+        cacert: "{{ cacert }}"
+        external: False
+        shared: False
+      register: network

@@ -1,0 +1,46 @@
+---
+    - name: create a new security group
+      os_security_group:
+        state: "{{ state }}"
+        name: "{{ securityGroups }}"
+        cacert: "{{ cacert }}"
+
+    - name: Create a new security group allowing any ICMP
+      os_security_group_rule:
+        security_group: "{{ securityGroups }}"
+        protocol: icmp
+        cacert: "{{ cacert }}"
+        remote_ip_prefix: "{{ remoteIP }}"
+
+    - name: Create a new security group rule for allowing the hdfs , mapred and yarn ports
+      os_security_group_rule:
+        security_group: "{{ securityGroups }}"
+        protocol: tcp
+        cacert: "{{ cacert }}"
+        port_range_min: "{{ item  }}"
+        port_range_max: "{{ item }}"
+        remote_ip_prefix: "{{ remoteIP }}"
+      with_items:
+        - "{{ enablePortsTCP }}"
+        
+    - name: Create a new security group rule for allowing the hdfs , mapred and yarn ports
+      os_security_group_rule:
+        security_group: "{{ securityGroups }}"
+        protocol: udp
+        cacert: "{{ cacert }}"
+        port_range_min: "{{ item  }}"
+        port_range_max: "{{ item }}"
+        remote_ip_prefix: "{{ remoteIP }}"
+      with_items:
+        - "{{ enablePortsUDP }}"
+
+    - name: Create a new security group rule for allowing the hdfs , mapred and yarn ports
+      os_security_group_rule:
+        security_group: "{{ securityGroups }}"
+        protocol: tcp
+        cacert: "{{ cacert }}"
+        port_range_min: "1"
+        port_range_max: "65000"
+        remote_ip_prefix: "{{ remoteIP }}"
+      with_items:
+        - "{{ enablePortsTCP }}"

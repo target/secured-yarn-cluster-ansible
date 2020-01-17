@@ -1,0 +1,12 @@
+---
+
+ - block:
+     
+     - include: updatehost.yml
+ 
+     - include: install.yml
+
+     - include: configure.yml
+
+
+

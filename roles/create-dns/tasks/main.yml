@@ -1,0 +1,6 @@
+---
+      - name: get an IP addres from the hostname required for DNS entry.
+        set_fact: ipaddress="{{ hostvars[inventory_hostname].ansible_host }}"
+
+      - debug:
+          msg: "Add logic of firing DNS API ( use CURL or get module ) for creating DNS entry by passing inventory_hostname as fqdn and ipaddress as input"

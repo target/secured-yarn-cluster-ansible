@@ -1,0 +1,66 @@
+---
+ - hosts: localhost
+   connection: local
+   roles:
+    - { role: download-certs }
+    - { role: create-keypair }
+    - { role: create-network }
+    - { role: create-subnet }
+    - { role: create-router }
+    - { role: create-securitygroup }
+    - { role: create-os-instance }
+    - { role: create-zookeeper-os-instance }
+    - { role: create-kdc-group }
+    - { role: create-volume}
+    - { role: attach-volume }
+
+ - name: Install JDK, create and configure users for creating Yarn cluster
+   hosts: all:!kdc_group:!localhost
+   become: yes
+   roles:
+    - { role: jdk }
+    - { role: create-dns }
+    - { role: create-users }
+    - { role: packages }
+
+ - name: Install JDK, create and configure users for creating Yarn cluster
+   hosts: datanode_group:!localhost
+   become: yes
+   roles:
+    - { role: mount-volume }
+
+ - hosts: kdc_group
+   become: yes
+   roles:
+    - { role: create-kdc-keytab }
+
+ - name: Install zookeeper on all zookeeper Nodes
+   hosts: zookeepersnode_group
+   become: yes
+   roles:
+    - { role: ansible-zookeeper }
+
+ - name: Install and Configure YARN Cluster
+   hosts: masternode_group:datanode_group:!localhost
+   become: yes
+   roles:
+     - { role: hadoop }
+
+ - hosts: livynode_group
+   become: yes
+   roles:
+    - { role: livy }
+
+ - name: Install and Configure Filebeat and Telegraf
+   hosts: all:!localhost:!kdc_group
+   become: yes
+   roles:
+     - { role: filebeat }
+     - { role: telegraf }
+
+ - name: configure cron jobs
+   hosts: masternode_group:datanode_group:!localhost
+   gather_facts: false
+   become: true
+   roles:
+    - cron-jobs

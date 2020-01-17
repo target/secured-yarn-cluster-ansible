@@ -1,0 +1,2 @@
+---
+ KDC_KEYTAB_PATH: "{{ kdcKeytabPath }}"

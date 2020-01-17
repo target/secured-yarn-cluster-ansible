@@ -1,0 +1,18 @@
+---
+
+filebeat_yum_repository: "{{filebeat_repo_baseurl}}/yum"
+
+filebeat_yum_config: |
+  [filebeat-{{filebeat_version}}]
+  name=Filebeat repository
+  baseurl={{filebeat_yum_repository}}
+  gpgcheck=1
+  gpgkey={{filebeat_gpg_key}}
+  enabled=1
+
+filebeat_packages:
+  - filebeat
+
+#filebeat_defaults_cfg: /etc/sysconfig/filebeat
+
+# vi:ts=2:sw=2:et:ft=yaml

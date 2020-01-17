@@ -1,0 +1,9 @@
+---
+    - name: creating the router
+      os_router:
+        state: "{{ state }}"
+        name: "{{ router }}"
+        cacert: "{{ cacert }}"
+        network: ext-core
+        interfaces:
+          - "{{ subnetName }}"

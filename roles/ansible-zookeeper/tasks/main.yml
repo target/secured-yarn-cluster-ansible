@@ -1,0 +1,14 @@
+---
+
+- include_tasks: updatehosts.yml
+
+- include_tasks: Debian.yml
+  when: ansible_os_family == 'Debian' and zookeeper_debian_apt_install
+
+- include_tasks: Debian-tarball.yml
+  when: ansible_os_family == 'Debian' and not zookeeper_debian_apt_install
+
+- include_tasks: RedHat.yml
+  when: ansible_os_family == 'RedHat'
+
+- include_tasks: common-config.yml

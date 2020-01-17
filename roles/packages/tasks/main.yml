@@ -1,0 +1,19 @@
+---
+    - name: Install dependencies utilities
+      yum:
+       name: "{{ item }}"
+       state: installed
+      become: yes
+      with_items:
+       - "{{ yum_packages }}"
+
+    - name: Upgrade pip
+      command: pip install --upgrade pip
+ 
+    - name: Install dependencies utilities
+      pip:
+       name: "{{ item }}"
+       state: present
+      become: yes
+      with_items:
+       - "{{ python_packages  }}"

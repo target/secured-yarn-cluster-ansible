@@ -1,0 +1,74 @@
+---
+ - name: Remove Data Folder contents
+   shell: |
+          rm -rf {{ HDFS_DATA_DIR }}/*
+   when: "'slave' in inventory_hostname" 
+   become: yes
+   become_user: "{{ hdfs_username }}"
+
+ - name: Start The DFS Service
+   shell: |
+          source ~/.bashrc
+          rm -rf {{ hadoop_root_dir }}/hdfs/name/*
+          hadoop namenode -format -force
+          start-dfs.sh
+          sleep 30
+   when: "'master' in inventory_hostname" 
+   become: yes
+   become_user: "{{ hdfs_username }}"
+   register: hdfs_out
+
+ - name: Start The Yarn Service
+   shell: |
+          source ~/.bashrc
+          ( ( nohup start-yarn.sh 1>/dev/null 2>&1 ) & )
+          sleep 30
+   when: "'master' in inventory_hostname"
+   become: yes
+   become_user: "{{ yarn_username }}"
+   register: yarn_out
+
+ - debug:
+     msg: "{{ hdfs_out }}"
+
+ - debug:
+     msg: "{{ yarn_out }}"
+     
+ - name: Stop default nfs service
+   systemd:
+      name: nfs
+      state: stopped
+   become: yes
+   ignore_errors: yes
+ 
+ - name: Stop default nfs service
+   systemd:
+      name: rpcbind
+      state: stopped
+   become: yes
+   ignore_errors: yes
+ 
+ - name: disable and stop rpc services
+   shell: |
+          systemctl disable rpcbind.service rpcbind.socket
+          systemctl stop rpcbind.service rpcbind.socket
+   become: yes
+   ignore_errors: yes
+ 
+ - name: Start The Portmap Service
+   shell: |
+          source ~/.bashrc
+          ( ( nohup hdfs --daemon start portmap 1>/dev/null 2>&1 ) & )
+          sleep 10
+   when: "'master' in inventory_hostname"
+   become_user: root
+   register: hdfs_portmap_out
+ 
+ - name: Start The NFS3 Service
+   shell: |
+          source ~/.bashrc
+          ( ( nohup hdfs --daemon start nfs3 1>/dev/null 2>&1 ) & )
+          sleep 10
+   when: "'master' in inventory_hostname"
+   become_user: "{{ nfs_username }}"
+   register: hdfs_nfs_out

@@ -1,0 +1,8 @@
+*.swa
+*.swp
+*.swo
+
+vagrant
+.vagrant
+
+.idea

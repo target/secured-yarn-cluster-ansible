@@ -1,0 +1,137 @@
+---
+
+ - set_fact: kdc_host="{{ lookup('dig', '{{ KDC_HOSTNAME }}/PTR') }}"
+
+ - name: Copy the Hadoop Conf files
+   copy:
+     src: hd_config.tgz
+     dest: "{{ HADOOP_CONF_DIR }}"
+     owner: "{{ userName }}"
+     group: "{{ userName }}"
+
+ - name: Unarchive the Hadoop conf files
+   unarchive: src={{ HADOOP_CONF_DIR }}/hd_config.tgz dest={{ HADOOP_CONF_DIR }} creates={{ HADOOP_CONF_DIR }}/hadoop copy=no owner="{{ userName }}" group="{{ userName }}" mode=750
+
+ - name: Remove exported values if they are present
+   lineinfile:
+     dest: "/home/{{ userName }}/.bashrc"
+     state: present
+     regexp: '^{{ item }}'
+     line: ''
+   become_user: "{{ userName }}"
+   with_items:
+     - "{{ export_variables }}"
+
+ - name: Set HADOOP_CONF_DIR , Spark and Livy Home variables
+   shell: |
+          echo "export JAVA_HOME=$(readlink -f /usr/bin/java | sed s:/jre/bin/java::)" >> /home/{{ item }}/.bashrc
+          echo "export HADOOP_CONF_DIR={{ HADOOP_CONF_DIR }}/hadoop" >> /home/{{ item }}/.bashrc
+          echo "export SPARK_HOME={{ spark_home_dir }}" >> /home/{{ item }}/.bashrc
+          echo "export LIVY_HOME={{ livy_home_dir }}" >> /home/{{ item }}/.bashrc
+          echo "export FLINK_HOME={{ flink_home_dir }}" >> /home/{{ item }}/.bashrc
+          echo "export PATH=$PATH:{{ spark_home_dir }}/bin:{{ livy_home_dir }}/bin" >> /home/{{ item }}/.bashrc
+          source /home/{{ item }}/.bashrc
+   become_user: "{{ item }}"
+   with_items:
+     - "{{ userName }}"
+   register: "out"
+
+ - name: Change the container-executor owner ands file permission
+   template:
+    src: krb5.conf.j2
+    dest: "/etc/krb5.conf"
+    owner: root
+    mode: 0644
+
+# - name: Copy Keytab files to respective yarn nodes
+#   copy:
+#      src: "{{ item }}.service.keytab"
+#      dest: "{{ root_dir }}/keytab_files/{{ item }}.service.keytab"
+#      owner: "{{ item }}"
+#      group: "{{ item }}"
+#      mode: 0400
+#   with_items:
+#      - "{{ userName }}"
+
+ - name: Copy Keytab files to respective yarn nodes(master)
+   copy:
+      src: "{{ item }}-{{ inventory_hostname_short }}.service.keytab"
+      dest: "{{ root_dir }}/keytab_files/{{ item }}-{{ inventory_hostname_short }}.service.keytab"
+      owner: "{{ item }}"
+      group: "{{ item }}"
+      mode: 0400
+   with_items:
+      - "{{ userName }}"
+
+ - name: Rename/Copy the livy conf template file
+   copy:
+     src: "{{ livy_home_dir }}/conf/livy.conf.template"
+     dest: "{{ livy_home_dir }}/conf/livy.conf"
+     remote_src: yes
+     mode: 0750
+     owner: "{{ userName }}"
+     group: "{{ userName }}"
+
+ - name: add/update livy.spark.master value
+   lineinfile:
+     dest: "{{ livy_home_dir }}/conf/livy.conf"
+     state: present
+     regexp: '^livy.spark.master'
+     line: 'livy.spark.master = yarn'
+
+ - name: add/update livy.spark.deploy-mode value
+   lineinfile:
+     dest: "{{ livy_home_dir }}/conf/livy.conf"
+     state: present
+     regexp: '^livy.spark.deploy-mode'
+     line: 'livy.spark.deploy-mode = cluster'
+
+ - name: add/update livy.file.local-dir-whitelist value
+   lineinfile:
+     dest: "{{ livy_home_dir }}/conf/livy.conf"
+     state: present
+     regexp: '^livy.file.local-dir-whitelist'
+     line: 'livy.file.local-dir-whitelist = {{ livy_file_local_dir }}'
+
+ - name: add/update livy.server.recovery.state-store value
+   lineinfile:
+     dest: "{{ livy_home_dir }}/conf/livy.conf"
+     state: present
+     regexp: '^livy.server.recovery.state-store'
+     line: 'livy.server.recovery.state-store = {{ livy_recovery_state }}'
+
+ - name: add/update livy.server.recovery.state-store.url value
+   lineinfile:
+     dest: "{{ livy_home_dir }}/conf/livy.conf"
+     state: present
+     regexp: '^livy.server.recovery.state-store.url'
+     line: 'livy.server.recovery.state-store.url = {{ zookeeper_ips | trim }}'
+
+ - name: add/update livy.server.launch.kerberos.keytab value
+   lineinfile:
+     dest: "{{ livy_home_dir }}/conf/livy.conf"
+     state: present
+     regexp: '^livy.server.launch.kerberos.keytab'
+     line: 'livy.server.launch.kerberos.keytab = {{ keytab_dir }}/{{ userName }}-{{ inventory_hostname_short }}.service.keytab'
+
+ - name: add/update livy.server.launch.kerberos.principal value
+   lineinfile:
+     dest: "{{ livy_home_dir }}/conf/livy.conf"
+     state: present
+     regexp: '^livy.server.launch.kerberos.principal'
+     line: 'livy.server.launch.kerberos.principal = {{ userName }}/{{ inventory_hostname }}@{{ KDC_REALM }}'
+
+ - name: Change the container-executor owner ands file permission
+   template:
+    src: metrics.properties.j2
+    dest: "{{ spark_home_dir }}/conf/metrics.properties"
+    owner: root
+    mode: 0644
+
+ - name: Start the Livy Service
+   shell: |
+          cd {{ livy_home_dir }}/bin
+          nohup ./livy-server start </dev/null >/dev/null 2>&1 &
+          sleep 10
+   become_user: "{{ userName }}"
+   register: out

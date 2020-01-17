@@ -1,0 +1,17 @@
+---
+ - debug:
+     msg: "{{ hadoop_version }}"
+
+ - name: "Download {{ hadoop_version }}"
+   get_url: url={{ hadoop_url }} dest={{ hadoop_root_dir }}/{{ name }}-{{ hd_version }}.tar.gz force=no
+   register: result
+   until: result is success
+   retries: 5
+   delay: 5
+
+ - name: Unarchive hadoop tgz
+   unarchive: src={{ hadoop_root_dir }}/{{ name }}-{{ hd_version }}.tar.gz dest={{ hadoop_root_dir }} creates={{ hadoop_root_dir }}/{{ name }}-{{ hadoop_version }} copy=no owner=root group=hadoop mode=750
+
+ - name: rename the folder path
+   shell: mv -f {{ hadoop_root_dir }}/{{ name }}-{{ hd_version }} {{ hadoop_root_dir }}/{{ name }}-{{ hadoop_version }} 
+   ignore_errors: yes

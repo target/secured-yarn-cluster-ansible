@@ -1,0 +1,15 @@
+log4j.rootCategory=INFO, FILE
+log4j.appender.console=org.apache.log4j.ConsoleAppender
+log4j.appender.console.target=System.err
+log4j.appender.console.layout=org.apache.log4j.PatternLayout
+log4j.appender.console.layout.ConversionPattern=%d{yy/MM/dd HH:mm:ss} %p %c{1}: %m%n
+
+log4j.appender.FILE=org.apache.log4j.RollingFileAppender
+log4j.appender.FILE.File={{ APP_LOGS_DIR }}/LogDriver_${logfile.name}.log
+log4j.appender.FILE.ImmediateFlush=true
+log4j.appender.FILE.Threshold=debug
+log4j.appender.FILE.Append=true
+log4j.appender.FILE.MaxFileSize=100MB
+log4j.appender.FILE.MaxBackupIndex=10
+log4j.appender.FILE.layout=org.apache.log4j.PatternLayout
+log4j.appender.FILE.layout.ConversionPattern=%d{yy/MM/dd HH:mm:ss} %p %c{1}: %m%n

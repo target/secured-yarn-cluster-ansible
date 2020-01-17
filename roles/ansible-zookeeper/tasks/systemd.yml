@@ -1,0 +1,6 @@
+---
+- name: Systemd script.
+  template: src=zookeeper.service.j2 dest=/lib/systemd/system/zookeeper.service
+  notify:
+    - Reload systemctl daemon
+    - Restart zookeeper

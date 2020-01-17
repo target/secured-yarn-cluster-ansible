@@ -1,0 +1,3 @@
+KDC_PASSWORD: "{{ vault_kdcPassword }}"
+KEY_STORE_PASSWORD: "{{ vault_keyStorePassword }}"
+truststorepassword: "{{ vault_trustStorePassword }}"

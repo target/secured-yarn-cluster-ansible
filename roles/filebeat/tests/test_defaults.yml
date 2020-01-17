@@ -1,0 +1,12 @@
+---
+- hosts: localhost
+  remote_user: root
+
+  vars:
+    - fbeat_user:  root
+    - fbeat_group: root
+
+  roles:
+    - ansible-role-filebeat
+
+# vi:ts=2:sw=2:et:ft=yaml

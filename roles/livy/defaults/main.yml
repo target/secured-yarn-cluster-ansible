@@ -1,0 +1,60 @@
+---
+
+ root_dir: /opt
+
+ livy_file_local_dir: /opt/clientcert/
+
+ livy_recovery_state: zookeeper
+
+ livy_artifact_name: livy
+
+ livy_version: 0.6.0
+
+ livy_default_name: apache-livy-{{ livy_version }}-incubating-bin
+
+ livy_artifact_repo_url: http://archive.apache.org/dist/incubator/livy/{{ livy_version }}-incubating/{{ livy_default_name }}.zip
+
+ spark_artifact_name: spark
+
+ spark_version: 2.4.0
+
+ list_of_spark_version:
+    - 2.1.1
+    - 2.2.2
+    - 2.3.0
+    - 2.3.2
+    - 2.4.0
+
+ export_variables:
+    - JAVA_HOME
+    - HADOOP_CONF_DIR
+    - SPARK_HOME
+    - LIVY_HOME
+    - FLINK_HOME
+
+ spark_artifact_repo_url: https://archive.apache.org/dist/{{ spark_artifact_name }}
+
+ flink_artifact_name: flink
+
+ flink_version: 1.7.1
+
+ flink_artifact_repo_url: https://archive.apache.org/dist/flink/flink-{{ flink_version }}/flink-{{ flink_version }}-bin-hadoop28-scala_2.12.tgz
+
+ livy_root_dir: /opt/livy
+
+ spark_root_dir: /opt/spark
+
+ flink_root_dir: /opt/flink
+
+ livy_home_dir: "{{ livy_root_dir }}/{{ livy_artifact_name }}-{{ livy_version }}"
+
+ flink_home_dir: "{{ flink_root_dir }}/{{ flink_artifact_name }}-{{ flink_version }}"
+
+ spark_home_dir: /opt/spark/{{ spark_artifact_name }}-{{ list_of_spark_version[-1] }}
+
+ HADOOP_CONF_DIR: /opt/hadoop/conf
+
+ keytab_dir: /opt/keytab_files
+
+ zookeeper_ips: |
+                {% set comma = joiner(",") %}{% for host in groups['zookeepersnode_group'] -%}{{ comma() }}{{ hostvars[host].ansible_host }}:2181{%- endfor -%}

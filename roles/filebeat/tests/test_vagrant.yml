@@ -1,0 +1,63 @@
+---
+
+- name: Defaults
+  hosts: all
+  become: yes
+
+  roles:
+    - {
+        role: ansible-role-filebeat,
+      }
+
+  tasks:
+    - name: Filebeat version
+      command: /usr/share/filebeat/bin/filebeat --version
+      register: r_version
+
+    - debug:
+        msg: "{{r_version.stdout}}"
+
+
+- name: Filebeat from URL
+  hosts: all
+  become: yes
+
+  roles:
+    - {
+        role: ansible-role-filebeat,
+        filebeat_use_repo: false,
+        filebeat_version: '6.0.0-alpha1-SNAPSHOT',
+        filebeat_package_baseurl: 'https://beats-nightlies.s3.amazonaws.com/filebeat'
+      }
+
+  tasks:
+    - name: Filebeat version
+      command: /usr/share/filebeat/bin/filebeat --version
+      register: r_version
+
+    - debug:
+        msg: "{{r_version.stdout}}"
+
+
+- name: Filebeat ES Template
+  hosts: all
+  become: yes
+
+  roles:
+    - {
+        role: ansible-role-filebeat,
+        filebeat_templates: [ templates/filebeat.template.json ]
+      }
+
+  tasks:
+
+    - name: Check filebeat ES template
+      stat: path=/etc/filebeat/filebeat.template.json
+      register: f
+
+    - name: Assert that the ES template exists
+      assert:
+        that:
+          - f.stat.exists
+
+# vi:ts=2:sw=2:et:ft=yaml

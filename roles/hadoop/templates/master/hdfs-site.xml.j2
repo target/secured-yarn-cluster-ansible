@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+    <property>
+        <name>dfs.permissions</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>{{ HDFS_NAME_DIR }}</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>{{ HDFS_DATA_DIR }}</value>
+    </property>
+   <property>
+    <name>dfs.namenode.rpc-bind-host</name>
+    <value>0.0.0.0</value>
+  </property>
+  <property>
+    <name>dfs.namenode.servicerpc-bind-host</name>
+    <value>0.0.0.0</value>
+  </property>
+  <property>
+    <name>dfs.client.use.datanode.hostname</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>dfs.datanode.use.datanode.hostname</name>
+    <value>true</value>
+  </property>
+
+  <!-- ######################################################## -->
+  <!-- Kerberos setting. -->
+  <property>
+    <name>dfs.block.access.token.enable</name>
+  <value>true</value>
+  </property>
+  <property>
+      <name>dfs.namenode.keytab.file</name>
+      <value>{{ KDC_KEYTAB }}/{{ hdfs_username }}-{{ ansible_hostname }}.service.keytab</value>
+  </property>
+  <property>
+     <name>dfs.namenode.kerberos.principal</name>
+     <value>{{ hdfs_username }}/_HOST@{{ KDC_REALM }}</value>
+  </property>
+  <property>
+      <name>dfs.namenode.kerberos.http.principal</name>
+      <value>HTTP/_HOST@{{ KDC_REALM }}</value>
+  </property>
+  <property>
+      <name>dfs.namenode.kerberos.internal.spnego.principal</name>
+      <value>HTTP/_HOST@{{ KDC_REALM }}</value>
+  </property>
+   <!-- ######################################################## -->
+   <!-- (optional) secondary name node secure configuration info -->
+  <property>
+      <name>dfs.secondary.namenode.keytab.file</name>
+      <value>{{ KDC_KEYTAB }}/{{ hdfs_username }}-{{ ansible_hostname }}.service.keytab</value>
+  </property>
+
+  <property>
+      <name>dfs.secondary.namenode.kerberos.principal</name>
+      <value>{{ hdfs_username }}/_HOST@{{ KDC_REALM }}</value>
+  </property>
+
+  <property>
+      <name>dfs.secondary.namenode.kerberos.http.principal</name>
+      <value>HTTP/_HOST@{{ KDC_REALM }}</value>
+  </property>
+  <property>
+      <name>dfs.secondary.namenode.kerberos.internal.spnego.principal</name>
+      <value>HTTP/_HOST@{{ KDC_REALM }}</value>
+  </property>
+  <property>
+      <name>dfs.webhdfs.enabled</name>
+      <value>true</value>
+  </property>
+  <property>
+      <name>dfs.web.authentication.kerberos.principal</name>
+      <value>HTTP/_HOST@{{ KDC_REALM }}</value>
+  </property>
+  <!-- since we included the HTTP principal all keytabs we can use it here -->
+  <property>
+      <name>dfs.web.authentication.kerberos.keytab</name>
+      <value>{{ KDC_KEYTAB }}/{{ hdfs_username }}-{{ ansible_hostname }}.service.keytab</value>
+  </property>
+  <!-- ######################################################## -->
+  <!-- data node secure configuration info -->
+  <property>
+      <name>dfs.datanode.data.dir.perm</name>
+      <value>700</value>
+  </property>
+  <!-- these ports must be set < 1024 for secure operation -->
+  <!-- conversely they must be set back to > 1024 for non-secure operation -->
+  <property>
+      <name>dfs.data.transfer.protection</name>
+      <value>integrity</value>
+  </property>
+  <property>
+      <name>dfs.datanode.address</name>
+      <value>0.0.0.0:10019</value>
+  </property>
+  <property>
+      <name>dfs.datanode.http.address</name>
+      <value>0.0.0.0:10022</value>
+  </property>
+  <property>
+      <name>dfs.http.policy</name>
+      <value>HTTPS_ONLY</value>
+  </property>
+  <property>
+      <name>dfs.namenode.kerberos.principal.pattern</name>
+      <value>{{ hdfs_username }}/*@{{ KDC_REALM }}</value>
+</property>
+  <property>
+ <name>nfs.superuser</name>
+ <value>{{ hdfs_username }}</value>
+</property>
+<property>
+ <name>dfs.namenode.accesstime.precision</name>
+ <value>0</value>
+ <description>The access time for HDFS file is precise upto this value.
+   The default value is 1 hour. Setting a value of 0 disables
+   access times for HDFS.
+ </description>
+</property>
+<property>
+ <name>nfs.export.point</name>
+ <value>/</value>
+</property>
+  <property>
+    <name>nfs.keytab.file</name>
+    <value>{{ KDC_KEYTAB }}/{{ nfs_username }}-{{ ansible_hostname }}.service.keytab</value> <!-- path to the nfs gateway keytab -->
+  </property>
+
+  <property>
+    <name>nfs.kerberos.principal</name>
+    <value>{{ nfs_username }}/_HOST@{{ KDC_REALM }}</value>
+  </property>
+</configuration>

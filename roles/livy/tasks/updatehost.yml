@@ -1,0 +1,47 @@
+---
+
+ - name: update the hostname ( remove novalocal )
+   shell: hostnamectl set-hostname {{ inventory_hostname }}
+   register: update_hostname
+
+ - name: set managed host flag to false ( not to update /etc/hosts at system boot )
+   lineinfile:
+     dest: /etc/cloud/cloud.cfg
+     state: present
+     regexp: '^manage_etc_hosts:'
+     line: 'manage_etc_hosts: false'
+
+ - replace:
+     path: '/etc/hosts'
+     regexp: '127.0.0.1'
+     replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+ - replace:
+     path: '/etc/hosts'
+     regexp: '{{ inventory_hostname }}.novalocal'
+     replace: '{{ inventory_hostname }}'
+
+ - name: Commenting a line in /etc/hosts containing IPv6
+   replace:
+     path: /etc/hosts
+     regexp: '(.*::1.*)'
+     replace: '#\1'
+
+ - name: Add IP address of all hosts to all hosts
+   lineinfile:
+     dest: /etc/hosts
+     regexp: ".*{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ item }}$"
+     #line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ item }}"
+     line: "{{ hostvars[item]['ansible_eth0']['ipv4']['address']}} {{ item }}"
+     state: present
+   when: item != inventory_hostname
+   with_items: "{{ groups['masternode_group'] | union(groups['datanode_group']) | union(groups['zookeepersnode_group']) | union(groups['livynode_group']) }}"
+
+ - name: Add IP address of all hosts to all hosts
+   lineinfile:
+     dest: /etc/hosts
+     regexp: '.*{{ hostvars[item].ansible_host }} {{ item }}$'
+     line: "{{ hostvars[item].ansible_host }} {{ item }}"
+     #line: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} {{ item }}"
+     state: present
+   with_items: "{{ groups['masternode_group'] | union(groups['datanode_group']) | union(groups['zookeepersnode_group']) | union(groups['livynode_group']) }}"

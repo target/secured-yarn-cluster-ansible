@@ -1,0 +1,28 @@
+---
+
+    - name: create cinder volumes data
+      os_volume:
+        state: "{{ state }}"
+        display_name: "{{ item }}-vol"
+        size: "{{ dataVolumeSize }}"
+        availability_zone: "{{ volume_az }}"
+        volume_type: extended
+        cacert: "{{ cacert }}"
+        display_description: "{{ item }}"
+        wait: yes
+      with_items:
+        - "{{ groups['datanode_group'] }}"
+      register: os_volumes_data
+      async: 600
+      poll: 0
+
+    - debug:
+        msg: "{{ os_volumes_data.results }}"
+
+    - name: Wait for Cinder Vol Creation For Data to complete
+      async_status: jid={{ item.ansible_job_id }}
+      register: os_jobs_data_vol
+      until: os_jobs_data_vol.finished
+      retries: 30
+      with_items:
+          - "{{ os_volumes_data.results }}"

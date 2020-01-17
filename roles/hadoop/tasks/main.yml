@@ -1,0 +1,9 @@
+---
+ - block:
+     - include: init.yml
+       
+     - include: install.yml
+ 
+     - include: config.yml
+   
+     - include: startservices.yml

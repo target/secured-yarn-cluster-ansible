@@ -1,0 +1,8 @@
+---
+    - name: create kerberos inventory group
+      add_host:
+        hostname: "{{ KDC_HOSTNAME }}"
+        groups: kdc_group
+        
+    - debug:
+        var: groups['kdc_group']

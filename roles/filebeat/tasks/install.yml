@@ -1,0 +1,12 @@
+---
+
+- include: install/Debian.yml
+  when: ansible_os_family == 'Debian'
+
+- include: install/RedHat.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: install/Solaris.yml
+  when: ansible_os_family == 'Solaris'
+
+# vi:ts=2:sw=2:et:ft=yaml

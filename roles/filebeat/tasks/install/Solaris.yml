@@ -1,0 +1,30 @@
+---
+
+- name: filebeat | Create Solaris log directory and parents
+  file:
+    path: "{{ filebeat_log_path }}"
+    owner: "{{ filebeat_user }}"
+    group: "{{ filebeat_group }}"
+    state: directory
+    recurse: yes
+    mode: 0775
+
+- name: filebeat | Download Filebeat agent package
+  get_url:
+    url: "{{ filebeat_solaris_url }}"
+    dest: "/tmp/filebeat-{{ filebeat_version }}.pkg"
+    mode: 0550
+
+- name:  filebeat | Install Filebeat agent for Solaris
+  svr4pkg:
+    name: filebeat
+    src: "/tmp/filebeat-{{ filebeat_version }}.pkg"
+    state: present
+
+- name: filebeat | Install Filebeat service
+  shell: (svccfg import /opt/filebeat/etc/filebeat.xml) && (svcs | grep filebeat) > /opt/filebeat/service.created
+  args:
+    creates: /opt/filebeat/service.created
+  when: filebeat_start_at_boot
+
+# vi:ts=2:sw=2:et:ft=yaml

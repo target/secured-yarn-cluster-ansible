@@ -1,0 +1,146 @@
+---
+    - name: launch instances for master
+      os_server:
+        name: "{{ masterNamePrefix }}{{ item.0 }}.{{ domain_name }}"
+        state: "{{ state }}"
+        key_name: "{{ sshKeyName }}"
+        availability_zone: "{{ item.1 }}"
+        nics:
+          - net-id: "{{ network.id }}"
+        image: "{{ image }}"
+        cacert: "{{ cacert }}"
+        security_groups: "{{ securityGroups }}"
+        flavor: "{{ masterOsFlavor }}"
+        wait: yes
+        auto_ip: yes
+        reuse_ips: no
+        api_timeout: 60
+      with_together:
+        - "{{ noOfMaster }}"
+        - "{{ av_z_master }}"
+      register: "os_hosts_master"
+      async: "{{ async_time }}"
+      poll: "{{ poll_insecs }}"
+
+    - name: launch instances for data
+      os_server:
+        name: "{{ dataNamePrefix }}{{ item.0 }}.{{ domain_name }}"
+        state: "{{ state }}"
+        key_name: "{{ sshKeyName }}"
+        availability_zone: "{{ item.1 }}"
+        nics:
+          - net-id: "{{ network.id }}"
+        image: "{{ image }}"
+        cacert: "{{ cacert }}"
+        security_groups: "{{ securityGroups }}"
+        flavor: "{{ dataOsFlavor }}"
+        wait: yes
+        auto_ip: yes
+        reuse_ips: no
+        api_timeout: 60
+      with_together:
+        - "{{ noOfData }}"
+        - "{{ av_z_data }}"
+      register: "os_hosts_data"
+      async: "{{ async_time }}"
+      poll: "{{ poll_insecs }}"
+
+    - name: launch instances for livy
+      os_server:
+        name: "{{ livyNamePrefix }}{{ item.0 }}.{{ domain_name }}"
+        state: "{{ state }}"
+        key_name: "{{ sshKeyName }}"
+        availability_zone: "{{ item.1 }}"
+        nics:
+          - net-id: "{{ network.id }}"
+        image: "{{ image }}"
+        cacert: "{{ cacert }}"
+        security_groups: "{{ securityGroups }}"
+        flavor: "{{ livyOsFlavor }}"
+        wait: yes
+        auto_ip: yes
+        reuse_ips: no
+        api_timeout: 60
+      with_together:
+        - "{{ noOfLivy }}"
+        - "{{ av_z_livy }}"
+      register: "os_hosts_livy"
+      async: "{{ async_time }}"
+      poll: "{{ poll_insecs }}"
+
+
+    - name: Wait for Master instance creation to complete
+      async_status: jid={{ item.ansible_job_id }}
+      register: os_jobs_master
+      until: os_jobs_master.finished
+      retries: "{{ no_retries }}"
+      with_items:
+          - "{{ os_hosts_master.results }}"
+
+
+    - name: Wait for Data instance creation to complete
+      async_status: jid={{ item.ansible_job_id }}
+      register: os_jobs_data
+      until: os_jobs_data.finished
+      retries: "{{ no_retries }}"
+      with_items:
+          - "{{ os_hosts_data.results }}"
+
+
+    - name: Wait for Livy instance creation to complete
+      async_status: jid={{ item.ansible_job_id }}
+      register: os_jobs_livy
+      until: os_jobs_livy.finished
+      retries: "{{ no_retries }}"
+      with_items:
+          - "{{ os_hosts_livy.results }}"
+
+    - name: add hosts to inventory
+      add_host:
+        name: "{{ item['openstack']['name'] }}"
+        groups: datanode_group
+        ansible_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_user: "{{ userName }}"
+      with_items: "{{ os_jobs_data.results }}"
+
+    - name: add hosts to inventory
+      add_host:
+        name: "{{ item['openstack']['name'] }}"
+        groups: masternode_group
+        ansible_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_user: "{{ userName }}"
+      with_items: "{{ os_jobs_master.results }}"
+
+    - name: add hosts to inventory
+      add_host:
+        name: "{{ item['openstack']['name'] }}"
+        groups: livynode_group
+        ansible_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_user: "{{ userName }}"
+      with_items: "{{ os_jobs_livy.results }}"
+
+    - name: Wait 30 Seconds to Spin Up All OST Instance (SSH)
+      pause: seconds=30
+
+    - name: Wait for SSH port to come up On newly created master clinet data and ingest OST instance
+      wait_for:
+        host: "{{ item.openstack.accessIPv4 }}"
+        port: 22
+        delay: 3
+        timeout: 180
+        state: started
+      with_items: "{{ os_jobs_master.results }}  + {{ os_jobs_data.results }} + {{ os_jobs_livy.results }}"
+      register: "ssh_os_out"
+      async: "{{ async_time }}"
+      poll: "{{ poll_insecs }}"
+
+    - name: Wait for SSH to complete for all master client data and ingest nodes
+      async_status: jid={{ item.ansible_job_id }}
+      register: ssh_jobs_out
+      until: ssh_jobs_out.finished
+      retries: "{{ no_retries }}"
+      with_items:
+          - "{{ ssh_os_out.results }}"

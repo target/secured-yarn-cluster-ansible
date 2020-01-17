@@ -1,0 +1,4 @@
+---
+  async_time: 600
+  poll_insecs: 0
+  no_retries: 30

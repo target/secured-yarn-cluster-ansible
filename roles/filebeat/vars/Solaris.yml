@@ -1,0 +1,12 @@
+---
+
+filebeat_v_major: "{{filebeat_version|regex_replace('^([0-9]+)\\..*$', '\\\\1')}}"
+filebeat_v_minor: "{{filebeat_version|regex_replace('^[0-9]+\\.([0-9]+).*$', '\\\\1')}}"
+filebeat_v_patch: "{{filebeat_version|regex_replace('^[0-9]+\\.[0-9]+\\.([0-9]+)$', '\\\\1')}}"
+
+filebeat_repo_version: "{{filebeat_v_major}}.{{ ((filebeat_v_major|int) > 1) | ternary('x', filebeat_v_minor)}}"
+
+filebeat_packages:
+  - filebeat
+
+# vi:ts=2:sw=2:et:ft=yaml

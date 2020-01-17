@@ -1,0 +1,93 @@
+---
+
+      - name: List old keytab file(s) for deletion
+        find:
+          paths: "{{ KDC_KEYTAB_PATH }}"
+          patterns: '*.keytab'
+        register: old_keytabs_to_delete
+
+      - name: Delete keytab file(s) if exist(s)
+        file:
+          path: "{{ item.path }}"
+          state: absent
+        with_items:
+          - "{{ old_keytabs_to_delete.files }}"
+
+      - name: Create directory for storing keytab if not exist
+        file:
+          name: "{{ KDC_KEYTAB_PATH }}"
+          state: directory
+
+      - debug:
+          msg: "{{ hostvars[item].inventory_hostname_short }}"
+        with_items:
+            - "{{ groups['masternode_group'] }}"
+
+      - name: Create Krb principals
+        shell: |
+               echo "{{ item.0 }} {{ item.1 }}"
+               kadmin.local -w "{{ KDC_PASSWORD }}" -q "addprinc -randkey {{ item.1 }}/{{ item.0 }}@{{ KDC_REALM }}"
+        with_nested:
+            - "{{ groups['masternode_group'] | union(groups['datanode_group']) }}"
+            - ['HTTP','hdfs','yarn','nfsserver']
+        register: out
+
+      - name: Create Krb principals
+        shell: |
+               kadmin.local -w "{{ KDC_PASSWORD }}" -q "addprinc -randkey {{ item.1 }}/{{ item.0 }}@{{ KDC_REALM }}"
+        with_nested:
+            - "{{ groups['masternode_group'] }}"
+            - ['mapred','{{ userName }} ']
+        register: map_out
+
+      - name: Create Krb principals
+        shell: |
+               kadmin.local -w "{{ KDC_PASSWORD }}" -q "addprinc -randkey {{ item.1 }}/{{ item.0 }}@{{ KDC_REALM }}"
+        with_nested:
+            - "{{ groups['livynode_group'] }}"
+            - ['{{ userName }}']
+        register: livy_out
+
+      - name: Create KDC keytab file(s)
+        shell: |
+               echo "{{ item.0 }} {{ item.1 }}"
+               kadmin.local -w "{{ KDC_PASSWORD }}" -q "ktadd -norandkey -k {{ KDC_KEYTAB_PATH }}/{{ item.1 }}-{{ hostvars[item.0].inventory_hostname_short }}.service.keytab {{ item.1 }}/{{ item.0 }}@{{ KDC_REALM }} HTTP/{{ item.0 }}@{{ KDC_REALM }}"
+        with_nested:
+            - "{{ groups['masternode_group'] | union(groups['datanode_group']) }}"
+            - ['hdfs','yarn','nfsserver']
+        register: kt_out
+
+      - name: Create KDC keytab file(s) for Hadoop Master node(s)
+        shell: |
+               kadmin.local -w "{{ KDC_PASSWORD }}" -q "ktadd -norandkey -k {{ KDC_KEYTAB_PATH }}/{{ item.1 }}-{{ hostvars[item.0].inventory_hostname_short }}.service.keytab {{ item.1 }}/{{ item.0 }}@{{ KDC_REALM }} HTTP/{{ item.0 }}@{{ KDC_REALM }}"
+        with_nested:
+            - "{{ groups['masternode_group'] }}"
+            - ['mapred','{{ userName }}']
+        register: kt_map_out
+
+      - name: Create KDC keytab file(s) for Livy node(s)
+        shell: |
+               kadmin.local -w "{{ KDC_PASSWORD }}" -q "ktadd -norandkey -k {{ KDC_KEYTAB_PATH }}/{{ item.1 }}-{{ hostvars[item.0].inventory_hostname_short }}.service.keytab {{ item.1 }}/{{ item.0 }}@{{ KDC_REALM }} HTTP/{{ item.0 }}@{{ KDC_REALM }}"
+        with_nested:
+            - "{{ groups['livynode_group'] }}"
+            - ['{{ userName }}']
+        register: kt_livy_out
+
+      - name: Create Krb principals for {{ userName }}
+        shell: |
+               kadmin.local -w "{{ KDC_PASSWORD }}" -q "addprinc -randkey {{ userName }}@{{ KDC_REALM }}"
+               kadmin.local -w "{{ KDC_PASSWORD }}" -q "ktadd -norandkey -k {{ KDC_KEYTAB_PATH }}/{{ userName }}.service.keytab {{ userName }}@{{ KDC_REALM }}"
+
+      - name: List the newly created keytab file(s) to copy
+        find:
+          paths: "{{ KDC_KEYTAB_PATH }}"
+          patterns: '*.keytab'
+        register: keytab_files
+
+      - name: Fetch/Copy the generated keytab files
+        fetch:
+          src: "{{ item.path }}"
+          dest: "./{{ item.path | basename }}"
+          flat: yes
+        with_items:
+          - "{{ keytab_files.files }}"

@@ -1,0 +1,19 @@
+---
+ - hosts: localhost
+   connection: local
+   roles:
+    - { role: download-certs }
+    - { role: create-keypair }
+    - { role: create-network }
+    - { role: create-subnet }
+    - { role: create-router }
+    - { role: create-securitygroup }
+    - { role: create-kdc-os-instance }
+
+ - name: Install JDK & Mount The Volume On All The ES Nodes
+   hosts: all:!localhost
+   become: yes
+   roles:
+    - { role: jdk }
+    - { role: kerberos-setup }
+    - { role: create-dns }

@@ -1,0 +1,14 @@
+---
+
+# FIXME: configuration test would be nice
+
+- name: Filebeat configuration file
+  template:
+    src=etc/filebeat/filebeat.yml.j2
+    dest="{{filebeat_config_file}}"
+    owner="{{filebeat_user}}"
+    group="{{filebeat_group}}"
+    mode=0640
+  notify: filebeat restart
+
+# vi:ts=2:sw=2:et:ft=yaml

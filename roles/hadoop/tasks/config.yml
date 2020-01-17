@@ -1,0 +1,138 @@
+---
+ - set_fact: kdc_host="{{ lookup('dig', '{{ KDC_HOSTNAME }}/PTR') }}"
+
+ - name: Create logs and userlogs directory and grant write access for hadoop group users
+   file:
+     name: "{{ HADOOP_HOME }}/logs/userslogs"
+     state: directory
+     owner: "{{ hdfs_username }}"
+     group: "{{ groupname }}"
+     mode: 0775
+
+ - name: Set HADOOP variables {{ item }} user
+   shell: |
+          echo "export JAVA_HOME=$(readlink -f /usr/bin/java | sed s:/jre/bin/java::)" >> /home/{{ item }}/.bashrc
+          echo "export HADOOP_HOME={{ HADOOP_HOME }}" >> /home/{{ item }}/.bashrc
+          echo "export PATH=$PATH:{{ HADOOP_HOME }}/bin:{{ HADOOP_HOME }}/sbin" >> /home/{{ item }}/.bashrc
+          echo "export HADOOP_CONF_DIR={{ HADOOP_CONF_DIR }}" >> /home/{{ item }}/.bashrc
+          source /home/{{ item }}/.bashrc
+   become_user: "{{ item }}"
+   with_items:
+     - "{{ users }}"
+   register: "out"
+
+ - name: Set HADOOP variables for root user
+   shell: |
+          echo "export JAVA_HOME=$(readlink -f /usr/bin/java | sed s:/jre/bin/java::)" >> /root/.bashrc
+          echo "export HADOOP_HOME={{ HADOOP_HOME }}" >> /root/.bashrc
+          echo "export PATH=$PATH:{{ HADOOP_HOME }}/bin:{{ HADOOP_HOME }}/sbin" >> /root/.bashrc
+          echo "export HADOOP_CONF_DIR={{ HADOOP_CONF_DIR }}" >> /root/.bashrc
+          source /root/.bashrc
+   become_user: root
+   register: "out1"
+
+ - name: update the groupname in the container executor config file
+   lineinfile:
+    path: "{{ HADOOP_CONF_DIR }}/container-executor.cfg"
+    regexp: '^yarn.nodemanager.linux-container-executor.group'
+    line: 'yarn.nodemanager.linux-container-executor.group={{ groupname }}'
+    owner: root
+    group: "{{ groupname }}"
+    mode: 0400
+   become_user: root
+
+ - name: Change the container-executor owner ands file permission
+   file:
+    path: "{{ HADOOP_HOME }}/bin/container-executor"
+    owner: root
+    group: "{{ groupname }}"
+    mode: 06050
+
+ - name: Change the container-executor owner ands file permission
+   template:
+    src: krb5.conf.j2
+    dest: "/etc/krb5.conf"
+    owner: root
+    mode: 0644
+
+ - name: Copy the workers file
+   template:
+     src: workers.j2
+     dest: "{{ HADOOP_CONF_DIR }}/workers"
+     owner: root
+     group: "{{ groupname }}"
+     mode: 0750
+
+ - name: Copy PredictionLogDriver log4j file
+   template:
+    src: log4j_PredictionLogDriver.properties.j2
+    dest: "{{ APP_CONF_DIR }}/log4j_LogDriver.properties"
+    owner: root
+    group: "{{ groupname }}"
+    mode: 0775
+
+ - name: Copy PredictionLogExecutor log4j file
+   template:
+    src: log4j_PredictionLogExecutor.properties.j2
+    dest: "{{ APP_CONF_DIR }}/log4j_LogExecutor.properties"
+    owner: root
+    group: "{{ groupname }}"
+    mode: 0775
+
+
+ - name: Copy The Template files on master nodes
+   template:
+     src: "master/{{ item }}.j2"
+     dest: "{{ HADOOP_CONF_DIR }}/{{ item }}"
+     owner: root
+     group: "{{ groupname }}"
+     mode: 0750
+   with_items:
+     - "{{ TEMPLATE_FILENAMES }}"
+   when: "'master' in inventory_hostname"
+
+ - name: Copy The Template files on slave/data nodes
+   template:
+     src: "slave/{{ item }}.j2"
+     dest: "{{ HADOOP_CONF_DIR }}/{{ item }}"
+     owner: root
+     group: "{{ groupname }}"
+     mode: 0750
+   with_items:
+     - "{{ TEMPLATE_FILENAMES }}"
+   when: "'slave' in inventory_hostname"
+
+ - name: Copy Keytab files to respective yarn nodes(master)
+   copy:
+      src: "{{ item }}-{{ inventory_hostname_short }}.service.keytab"
+      dest: "/etc/security/{{ KDC_REALM }}/keytab/{{ item }}-{{ inventory_hostname_short }}.service.keytab"
+      owner: "{{ item }}"
+      group: "{{ groupname }}"
+      mode: 0400
+   with_items:
+      - "{{ users }}"
+   when: "'master' in inventory_hostname"
+
+ - name: Copy Keytab files to respective yarn nodes(data)
+   copy:
+      src: "{{ item }}-{{ inventory_hostname_short }}.service.keytab"
+      dest: "/etc/security/{{ KDC_REALM }}/keytab/{{ item }}-{{ inventory_hostname_short }}.service.keytab"
+      owner: "{{ item }}"
+      group: "{{ groupname }}"
+      mode: 0400
+   with_items:
+      - "{{ users }}"
+   when: "'slave' in inventory_hostname and 'mapred' not in item"
+
+ - name: Archive the HADOOP Conf files
+   archive:
+      path: "{{ HADOOP_CONF_DIR }}"
+      dest: "{{ HADOOP_CONF_DIR }}/hd_config.tgz"
+   when: "'master' in inventory_hostname"
+
+ - name: Fetch the generated keytab files
+   fetch:
+      src: "{{ HADOOP_CONF_DIR }}/hd_config.tgz"
+      dest: "./"
+      flat: yes
+   when: "'master' in inventory_hostname"

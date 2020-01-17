@@ -1,0 +1,114 @@
+---
+
+ - name: Create Directories for Hadoop Set Up
+   file:
+     name: "{{ hadoop_root_dir }}"
+     state: directory
+     owner: "root"
+     group: "{{ groupname }}"
+     mode: 0750
+
+ - name: Create Directories for Hadoop Set Up
+   file:
+     name: "{{ hadoop_root_dir }}/hdfs"
+     state: directory
+     owner: "{{ hdfs_username }}"
+     group: "{{ groupname }}"
+     mode: 0750
+
+ - name: Create Directories for Hadoop Set Up
+   file:
+     name: "{{ hadoop_root_dir }}/hdfs/name"
+     state: directory
+     owner: "{{ hdfs_username }}"
+     group: "{{ groupname }}"
+     mode: 0750
+   when: "'master' in inventory_hostname"
+
+ - name: Create Directories for Hadoop Set Up
+   file:
+     name: "{{ HDFS_DATA_DIR }}"
+     state: directory
+     owner: "{{ hdfs_username }}"
+     group: "{{ groupname }}"
+     mode: 0750
+   when: "'slave' in inventory_hostname"
+
+ - name: Change Ownership
+   shell: |
+          chown -R {{ hdfs_username }}:{{ groupname }} {{ HDFS_DATA_DIR }}
+   when: "'slave' in inventory_hostname"
+   become: yes
+   become_user: root
+
+ - name: Create Directory for App Conf
+   file:
+     name: "{{ APP_CONF_DIR }}"
+     state: directory
+     owner: "root"
+     group: "{{ groupname }}"
+     mode: 0755
+
+ - name: Create Directories for App Logs
+   file:
+     name: "{{ APP_LOGS_DIR }}"
+     state: directory
+     owner: "root"
+     group: "{{ groupname }}"
+     mode: 0775
+
+ - name: Create Directories for App Lib
+   file:
+     name: "{{ APP_LIB_DIR }}"
+     state: directory
+     owner: "root"
+     group: "{{ groupname }}"
+     mode: 0755
+
+ - name: Create Truststore and keystore dir
+   file:
+      name: "{{ TRUSTSTORE_DIR }}"
+      state: directory
+      mode: 0755
+
+ - name: Create Keytab directory
+   file:
+      name: "{{ KDC_KEYTAB }}"
+      state: directory
+      mode: 0755
+
+ - name: Create tmp Directories
+   file:
+     name: "{{ item }}"
+     state: directory
+     owner: "{{ yarn_username }}"
+     group: "{{ groupname }}"
+     mode: 0775
+   with_items:
+     - "{{ TMP_DIRS }}"
+
+ - name: Create Keystore
+   shell: |
+          keytool -genkey -keystore  {{ inventory_hostname_short }}.keystore -keyalg RSA -alias {{ inventory_hostname_short }} -dname "CN={{ inventory_hostname }},O=Hadoop"  -keypass {{ KEY_STORE_PASSWORD }} -storepass {{ KEY_STORE_PASSWORD }}
+          keytool -exportcert -keystore  {{ inventory_hostname_short }}.keystore -alias {{ inventory_hostname_short }} -file {{ inventory_hostname_short }}.cert -storepass {{ KEY_STORE_PASSWORD }}
+          keytool -import -keystore hadoop.truststore -alias {{ inventory_hostname_short }}.truststore -file {{ inventory_hostname_short }}.cert  -noprompt -storepass {{ KEY_STORE_PASSWORD }}
+   with_items:
+      - "{{ groups['masternode_group'] | union(groups['datanode_group']) }}"
+   become: false
+   delegate_to: localhost
+   ignore_errors: yes
+
+ - name: Copy The Keystore and Certificates
+   copy:
+     src: "{{ item }}"
+     dest: "{{ TRUSTSTORE_DIR }}/"
+     mode: 0644
+   with_items:
+      - "{{ inventory_hostname_short }}.cert"
+      - "{{ inventory_hostname_short }}.keystore"
+
+ - name: Copy The Keystore and Certificates
+   copy:
+     src: hadoop.truststore
+     dest: "{{ TRUSTSTORE_DIR }}/"
+     mode: 0644

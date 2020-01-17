@@ -1,0 +1,63 @@
+---
+    - name: launch instances for zookeeper
+      os_server:
+        name: "{{ zookeeperNamePrefix }}{{ item.0 }}.{{ domain_name }}"
+        state: "{{ state }}"
+        key_name: "{{ sshKeyName }}"
+        availability_zone: "{{ item.1 }}"
+        nics:
+          - net-id: "{{ network.id }}"
+        image: "{{ image }}"
+        cacert: "{{ cacert }}"
+        security_groups: "{{ securityGroups }}"
+        flavor: "{{ zookeeperOsFlavor }}"
+        wait: yes
+        auto_ip: yes
+        reuse_ips: no
+        api_timeout: 60
+      with_together:
+        - "{{ noOfZookeeper }}"
+        - "{{ av_z_zookeeper }}"
+      register: "os_hosts_zookeeper"
+      async: "{{ async_time }}"
+      poll: "{{ poll_insecs }}"
+
+    - name: Wait for zookeeper instance creation to complete
+      async_status: jid={{ item.ansible_job_id }}
+      register: os_jobs_zookeeper
+      until: os_jobs_zookeeper.finished
+      retries: "{{ no_retries }}"
+      with_items:
+          - "{{ os_hosts_zookeeper.results }}"
+
+    - name: add hosts to inventory
+      add_host:
+        name: "{{ item['openstack']['name'] }}"
+        groups: zookeepersnode_group
+        ansible_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_user: "{{ userName }}"
+      with_items: "{{ os_jobs_zookeeper.results }}"
+
+    - name: Wait 30 Seconds to Spin Up All OST Instance (SSH)
+      pause: seconds=30
+
+    - name: Wait for SSH port to come up On newly created zookeeper OST instance
+      wait_for:
+        host: "{{ item.openstack.accessIPv4 }}"
+        port: 22
+        delay: 3
+        timeout: 180
+        state: started
+      with_items: "{{ os_jobs_zookeeper.results }}"
+      register: "ssh_os_out"
+      async: "{{ async_time }}"
+      poll: "{{ poll_insecs }}"
+
+    - name: Wait for SSH to complete for all zookeeper nodes
+      async_status: jid={{ item.ansible_job_id }}
+      register: ssh_jobs_out
+      until: ssh_jobs_out.finished
+      retries: "{{ no_retries }}"
+      with_items:
+          - "{{ ssh_os_out.results }}"

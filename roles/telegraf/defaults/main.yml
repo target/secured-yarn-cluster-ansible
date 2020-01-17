@@ -1,0 +1,61 @@
+---
+# defaults file for ansible-telegraf
+
+telegraf_agent_version: 1.4.0
+telegraf_custom_url: "https://dl.influxdata.com/telegraf/releases/telegraf-{{ telegraf_agent_version }}-1.{{ ansible_architecture }}.rpm"
+telegraf_agent_hostname: "{{ ansible_fqdn }}"
+telegraf_agent_interval: 60
+telegraf_agent_debug: False
+telegraf_agent_round_interval: True
+telegraf_agent_flush_interval: 60
+telegraf_agent_flush_jitter: 0
+telegraf_agent_aws_tags: False
+telegraf_agent_aws_tags_prefix: ""
+
+# v0.13 settings (not sure if supported in older version):
+telegraf_agent_collection_jitter: 0
+telegraf_agent_metric_batch_size: 1000
+telegraf_agent_metric_buffer_limit: 10000
+telegraf_agent_quiet: False
+
+# v1.1 settings:
+telegraf_agent_logfile: ""
+telegraf_agent_omit_hostname: False
+
+telegraf_global_tags: []
+
+telegraf_agent_output:
+telegraf_plugins_default:
+  - plugin: cpu
+  - plugin: io
+  - plugin: mem
+  - plugin: net
+  - plugin: system
+  - plugin: swap
+  - plugin: statsd
+    config:
+       - protocol = "udp"
+       - service_address = ":8125"
+       - delete_gauges = true
+       - delete_counters = true
+       - delete_sets = true
+       - delete_timings = true
+       - percentiles = [90]
+       - metric_separator = "_"
+       - parse_data_dog_tags = false
+       - allowed_pending_messages = 10000
+       - percentile_limit = 1000
+
+  #- plugin: netstat
+  #- plugin: redis
+  #  config:
+  #    - servers = ["tcp://{{ ansible_default_ipv4.address }}:6379"]
+  # - plugin: tail
+  #   config:
+  #     - file = ["/opt/redisstats/*.log"]
+  #     - from_beginning = false
+  #     - name_override = "dcaas-intg-metrics-test"
+  #     - data_format = "json"
+  #     - tag_keys = []
+
+telegraf_plugins_extra:

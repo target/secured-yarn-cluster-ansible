@@ -1,0 +1,18 @@
+---
+    - name: create master instances group
+      os_server_facts:
+        server: "{{ livyNamePrefix }}*"
+        cacert: "{{ cacert }}"
+      register: os_hosts
+    - debug:
+        var: os_hosts
+    - name: add hosts to inventory
+      add_host:
+        name: "{{ item['name'] }}"
+        groups: livynode_group
+        ansible_host: "{{ item.accessIPv4 }}"
+        ansible_ssh_host: "{{ item.accessIPv4 }}"
+      with_items: "{{ os_hosts.ansible_facts.openstack_servers }}"
+
+    - debug:
+        var: groups['livynode_group']

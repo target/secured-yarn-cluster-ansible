@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  author: Emiliano Castagnari
+  description: Ansible role for FileBeat
+  license: Apache
+  min_ansible_version: 2.1
+  platforms:
+    - name: EL
+      versions:
+        - 6
+        - 7
+    - name: Debian
+      versions:
+        - wheezy
+    - name: Ubuntu
+      versions:
+        - precise
+        - trusty
+    - name: Amazon Linux
+    - name: Solaris
+      versions:
+        - all
+
+  galaxy_tags:
+    - monitoring
+    - system
+
+dependencies: []

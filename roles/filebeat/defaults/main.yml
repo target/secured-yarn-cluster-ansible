@@ -1,0 +1,103 @@
+---
+
+# Filebeat user and group
+#  WARNING: If you run filebeat with a user other than root make sure
+#  your logs are readable by the filebeat user. Add the filebeat user
+#  to a privileged group, with access to your logs (adm)
+filebeat_user:  root
+filebeat_group: root
+
+# Create the filebeat user and group
+filebeat_create_user: true
+
+# Filebeat version to use
+#
+filebeat_version: 5.x
+
+filebeat_gpg_key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+
+filebeat_baseurl: "https://artifacts.elastic.co"
+filebeat_repo_baseurl: "{{filebeat_baseurl}}/packages/{{filebeat_version}}"
+filebeat_package_baseurl: "{{filebeat_baseurl}}/downloads/beats/filebeat"
+
+# Filebeat Solaris url
+#
+# filebeat_solaris_url: {{http://<url_to_your_pkg>/filebeat-{{ filebeat_version }}-solaris-amd64.pkg
+
+
+# Start filebeat at boot time
+#
+filebeat_start_at_boot: True
+
+# Filebeat version upgrade
+#  This options allows package upgrades.
+#  Make sure you know what this implies.
+filebeat_upgrade: false
+
+filebeat_config_enabled: True
+
+filebeat_config_file: /etc/filebeat/filebeat.yml
+
+filebeat_config_registry_file: /var/lib/filebeat/registry
+
+# Filebeat configuration
+#  The configuratlion is built based on a single variable, in YAML format, filebeat_config.
+#  Just for fun and example, it has been splitted into multiple vars:
+#
+#   - filebeat_config_prospectors
+#   - filebeat_config_output
+#   - filebeat_config_shipper
+#   - filebeat_config_logging
+#
+
+filebeat_config_prospectors: |
+  filebeat:
+    prospectors:
+      -
+        document_type: "{{ KDC_REALM }}"
+        input_type: log
+        paths:
+         - /opt/applogs/*.log
+        exclude_lines: ["metrics"]
+        json.message_key: logger_name
+        json.keys_under_root: true
+        registry_file: "{{filebeat_config_registry_file}}"
+
+filebeat_config_output: |
+  output:
+    kafka:
+      hosts:
+        - "{{ logsbroker }}"
+      required_acks: 0
+      topic: "{{ logstopic }}"
+
+
+filebeat_config_shipper: |
+  shipper:
+
+
+filebeat_config_logging: |
+  logging:
+    files:
+      level: debug
+      name: filebeat.log
+      path: /var/log/filebeat
+      rotateeverybytes: 10485760 # = 10MB
+    to_files: true
+
+
+filebeat_config: |
+  {{filebeat_config_prospectors}}
+
+  {{filebeat_config_output}}
+
+  {{filebeat_config_shipper}}
+
+  {{filebeat_config_logging}}
+
+filebeat_use_repo: True
+
+# List of template files to copy
+filebeat_templates: []
+
+# vi:ts=2:sw=2:et:ft=yaml

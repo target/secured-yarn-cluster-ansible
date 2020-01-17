@@ -1,0 +1,8 @@
+---
+ users:
+    - hdfs
+    - yarn
+    - mapred
+    - nfsserver
+
+ groupname: hadoop

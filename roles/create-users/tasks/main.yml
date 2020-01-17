@@ -1,0 +1,178 @@
+---
+ - name: update the hostname ( remove novalocal )
+   hostname:
+     name: "{{ inventory_hostname }}"
+   register: update_hostname
+
+ - name: set managed host flag to false ( not to update /etc/hosts at system boot )
+   lineinfile:
+     dest: /etc/cloud/cloud.cfg
+     state: present
+     regexp: '^manage_etc_hosts:'
+     line: 'manage_etc_hosts: false'
+
+ - name: update host entry file - adding ipv4 address
+   replace:
+     path: '/etc/hosts'
+     regexp: '127.0.0.1'
+     replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+ - name: update host entry file - rename hostname entry
+   replace:
+     path: '/etc/hosts'
+     regexp: '{{ inventory_hostname }}.novalocal'
+     replace: '{{ inventory_hostname }}'
+
+ - name: Commenting a line in /etc/hosts containing IPv6
+   replace:
+     path: /etc/hosts
+     regexp: '(.*::1.*)'
+     replace: '#\1'
+
+ - name: update the all node host entry in hosts file
+   shell: echo "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} {{ item }}"
+   when: hostvars[item].ansible_host is defined
+   with_items:
+     - "{{ groups['masternode_group'] | union(groups['datanode_group']) }}"
+   register: out
+
+ - name: Add IP address of all hosts to all hosts
+   lineinfile:
+     dest: /etc/hosts
+     regexp: ".*{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ item }}$"
+     line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ item }}"
+     state: present
+   when: item != inventory_hostname
+   with_items: "{{ groups['masternode_group'] | union(groups['datanode_group']) }}"
+
+ - name: Add IP address of all hosts to all hosts
+   lineinfile:
+     dest: /etc/hosts
+     regexp: '.*{{ hostvars[item].ansible_host }} {{ item }}$'
+     line: "{{ hostvars[item].ansible_host }} {{ item }}"
+     state: present
+   with_items: "{{ groups['masternode_group'] | union(groups['datanode_group']) }}"
+
+ - name: make sure group {{ groupname }} exist on all the nodes
+   group:
+     name: "{{ groupname }}"
+     state: present
+
+ - name: Allow 'wheel' group to have passwordless sudo
+   lineinfile:
+     dest: /etc/sudoers
+     state: present
+     regexp: '^%{{ groupname }}'
+     line: '%{{ groupname }} ALL=(ALL) NOPASSWD: ALL'
+
+ - name: Create User Account for installing and configuring Yarn cluster
+   user:
+     name: "{{ item }}"
+     generate_ssh_key: yes
+     ssh_key_bits: 2048
+     ssh_key_file: .ssh/id_rsa
+     group: "{{ groupname }}"
+   with_items:
+     - "{{ users }}"
+   become: yes
+   become_user: root
+
+# Works for both debain and redhat
+ - name: Set Password never expires to users
+   command: |
+          chage -M -1 {{ item }}
+   with_items:
+     - "{{ users }}"
+   become: yes
+   become_user: root
+
+ - name:  Add {{ userName }} user to {{ groupname }} group
+   user:
+     name: "{{ userName }}"
+     group: "{{ groupname }}"
+     append: yes
+
+ - debug:
+     msg: "{{ inventory_hostname }}"
+
+ - name: Fetch public key from master
+   fetch:
+    src: "/home/{{ item }}/.ssh/id_rsa.pub"
+    dest: "./id_rsa_{{ item }}-{{ inventory_hostname }}.pub"
+    flat: yes
+   with_items:
+     - "{{ users }}"
+   become: yes
+   when: "'master' in inventory_hostname"
+
+ - name: Copy The Public Key on all the nodes
+   copy:
+     src: "./id_rsa_{{ item.0 }}-{{ item.1 }}.pub"
+     dest: "/home/{{ item.0 }}"
+     force: yes
+     mode: 777
+     owner: "{{ item.0 }}"
+   with_nested:
+     - "{{ users }}"
+     - "{{ groups['masternode_group']}}"
+   become: yes
+
+ - name: Add The Key to authorized key file
+   shell: |
+          cat /home/{{ item }}/id_rsa_{{ item }}*.pub >> /home/{{ item }}/.ssh/authorized_keys
+          chown {{ item }}:{{ groupname }} /home/{{ item }}/.ssh/authorized_keys
+          chmod 600 /home/{{ item }}/.ssh/authorized_keys
+   with_items:
+     - "{{ users }}"
+   become: True
+
+# - name: Check SSH conection for all the created users from master node to all slave nodes
+#   shell: |
+#          ssh-keyscan -H {{ item.1 }} >> ~/.ssh/known_hosts
+#          ssh {{ item.0 }}@{{ item.1 }} "echo 2>&1"
+#   become_user: "{{ item.0 }}"
+#   with_nested:
+#     - "{{ users }}"
+#     - "{{ groups['masternode_group'] | union(groups['datanode_group']) }}"
+#   when: "'master' in inventory_hostname"
+#   register: "ssh_os_out"
+
+
+ - name: Add keys to known hosts file
+   shell: |
+          ssh-keyscan -H {{ item.1 }} >> ~/.ssh/known_hosts
+   become_user: "{{ item.0 }}"
+   with_nested:
+     - "{{ users }}"
+     - "{{ groups['masternode_group'] | union(groups['datanode_group']) }}"
+   when: "'master' in inventory_hostname"
+   register: "known_host_out"
+
+ - debug:
+     msg: "{{ known_host_out }}"
+
+ - name: Check SSH conection for all the created users from master node to all slave nodes
+   command: ssh {{ item.0 }}@{{ item.1 }} 'echo success'
+   become_user: "{{ item.0 }}"
+   with_nested:
+     - "{{ users }}"
+     - "{{ groups['masternode_group'] | union(groups['datanode_group']) }}"
+   when: "'master' in inventory_hostname"
+   register: "ssh_os_out"
+
+ - debug:
+     msg: "{{ ssh_os_out }}"
+
+ - name: Disable IPv6 ALL
+   sysctl:
+     name: net.ipv6.conf.all.disable_ipv6
+     value: 1
+     sysctl_file: /etc/sysctl.conf
+     reload: yes
+
+ - name: Check Whether IPv6 is disabled or not
+   command: cat /proc/sys/net/ipv6/conf/all/disable_ipv6
+   register: out
+
+ - debug:
+     msg: "{{ out }}"

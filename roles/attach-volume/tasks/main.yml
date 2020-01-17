@@ -1,0 +1,26 @@
+---
+
+    - name: Attach the data volume
+      os_server_volume:
+        state: "{{ state }}"
+        server: "{{ item.0 }}"
+        volume: "{{ item.0 }}-vol"
+        cacert: "{{ cacert }}"
+        device: "{{ volumePath }}"
+        wait: yes
+      with_together:
+        - "{{ groups['datanode_group'] }}"
+      register: attach_data_vol
+      async: "{{ async_time }}"
+      poll: "{{ poll_insecs }}"
+
+    - debug:
+        msg: "{{ attach_data_vol.results }}"
+
+    - name: Wait for attach vol For Data to complete
+      async_status: jid={{ item.ansible_job_id }}
+      register: os_jobs_attach_data_vol
+      until: os_jobs_attach_data_vol.finished
+      retries: "{{ no_retries }}"
+      with_items:
+          - "{{ attach_data_vol.results }}"

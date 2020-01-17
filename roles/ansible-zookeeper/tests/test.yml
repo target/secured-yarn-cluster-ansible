@@ -1,0 +1,92 @@
+---
+- hosts: localhost
+  connection: local
+  remote_user: root
+  tasks:
+    - shell: "ps aux | grep -i zookeeper"
+      register: status
+      failed_when: status.rc != 0
+      when: ansible_service_mgr != 'systemd'
+
+    - shell: "systemctl status zookeeper | grep running"
+      register: status
+      failed_when: status.rc != 0
+      when: ansible_service_mgr == 'systemd'
+
+#
+# Host hash playbook
+#
+
+- hosts: localhost
+  connection: local
+  remote_user: root
+  roles:
+    - role: role_under_test
+      zookeeper_hosts:
+        - host: "{{zookeeper_hosts_hostname}}" # the machine running
+          id: 2
+
+- hosts: localhost
+  connection: local
+  remote_user: root
+  tasks:
+    # Expecting myid to be 2 as defined in zookeeper_hosts variable
+    - shell: "grep 2 /var/lib/zookeeper/myid"
+      register: status
+      failed_when: status.rc != 0
+
+#
+# Host list playbook
+#
+
+- hosts: localhost
+  connection: local
+  remote_user: root
+  roles:
+    - role: role_under_test
+      zookeeper_hosts:
+        - "{{zookeeper_hosts_hostname}}"
+
+- hosts: localhost
+  connection: local
+  remote_user: root
+  tasks:
+      # Expecting myid to be 1 defined by loop.index
+    - shell: "grep 1 /var/lib/zookeeper/myid"
+      register: status
+      failed_when: status.rc != 0
+
+#
+# Host hash playbook with ip key
+#
+
+- hosts: localhost
+  connection: local
+  remote_user: root
+  roles:
+    - role: role_under_test
+      zookeeper_version: 3.4.12
+      zookeeper_dir: /opt/zookeeper-{{zookeeper_version}}
+      zookeeper_hosts:
+        - host: "{{zookeeper_hosts_hostname}}" # the machine running
+          ip: '192.168.0.1'
+          id: 2
+
+- hosts: localhost
+  connection: local
+  remote_user: root
+  vars:
+    zookeeper_version: 3.4.12
+    zookeeper_dir: /opt/zookeeper-{{zookeeper_version}}
+    zookeeper_cluster_ports: "2888:3888"
+  tasks:
+    # Expecting myid to be 2 as defined in zookeeper_hosts variable
+    - shell: "grep 2 /var/lib/zookeeper/myid"
+      register: status
+      failed_when: status.rc != 0
+
+    # Expecting zoo.cfg to include serve definition with custom IP
+    - shell: "grep 'server.2=192.168.0.1:{{ zookeeper_cluster_ports }}' {{ zookeeper_dir }}/conf/zoo.cfg"
+      register: status
+      failed_when: status.rc != 0
+

@@ -1,0 +1,11 @@
+{% for server in zookeeper_hosts %}
+{% if server.host is defined %}
+{% if server.host == zookeeper_hosts_hostname %}
+{{ server.id }}
+{% endif %}
+{% else %}
+{% if server == zookeeper_hosts_hostname %}
+{{ loop.index }}
+{% endif %}
+{% endif %}
+{% endfor %}

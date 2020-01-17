@@ -1,0 +1,7 @@
+---
+      - name: download certs
+        get_url:
+          url: "{{certs_browseconfig}}"
+          dest: ./ca-bundle.crt
+          mode: 0777
+          force: yes

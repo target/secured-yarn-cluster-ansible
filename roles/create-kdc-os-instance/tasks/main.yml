@@ -1,0 +1,57 @@
+---
+    - name: launch instances for kerberos
+      os_server:
+        name: "{{ kerberosNamePrefix }}.{{ domain_name }}"
+        state: "{{ state }}"
+        key_name: "{{ sshKeyName }}"
+        availability_zone: "{{ item.1 }}"
+        nics:
+          - net-id: "{{ network.id }}"
+        image: "{{ image }}"
+        cacert: "{{ cacert }}"
+        security_groups: "{{ securityGroups }}"
+        flavor: "{{ kerberosOsFlavor }}"
+        wait: yes
+        auto_ip: yes
+        reuse_ips: no
+        api_timeout: 60
+      with_together:
+        - "{{ noOfKerberos }}"
+        - "{{ av_z_kerberos }}"
+      register: "os_hosts_kerberos"
+      async: "{{ async_time }}"
+      poll: "{{ poll_insecs }}"
+
+
+    - name: Wait for kerberos instance creation to complete
+      async_status: jid={{ item.ansible_job_id }}
+      register: os_jobs_kerberos
+      until: os_jobs_kerberos.finished
+      retries: "{{ no_retries }}"
+      with_items:
+          - "{{ os_hosts_kerberos.results }}"
+
+
+    - name: add hosts to inventory
+      add_host:
+        name: "{{ item['openstack']['name'] }}"
+        groups: kdc_group
+        ansible_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_host: "{{ item.openstack.accessIPv4 }}"
+        ansible_ssh_user: "{{ userName }}"
+      with_items: "{{ os_jobs_kerberos.results }}"
+
+    - name: Wait 30 Seconds to Spin Up All OST Instance (SSH)
+      pause: seconds=60
+
+    - name: Wait for SSH port to come up On newly created master clinet data and ingest OST instance
+      wait_for:
+        host: "{{ item.openstack.accessIPv4 }}"
+        port: 22
+        delay: 3
+        timeout: 180
+        state: started
+      with_items: "{{ os_jobs_kerberos.results }}"
+      register: "ssh_os_out"
+      async: "{{ async_time }}"
+      poll: "{{ poll_insecs }}"

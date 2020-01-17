@@ -1,0 +1,14 @@
+---
+    - name: creating the subnet
+      os_subnet:
+        state: "{{ state }}"
+        network_name: "{{ network.id }}"
+        name: "{{ subnetName }}"
+        cacert: "{{ cacert }}"
+        ip_version: 4
+        cidr: "{{ cidr }}"
+        gateway_ip: "{{ gatewayIp }}"
+        enable_dhcp: yes
+        dns_nameservers: "{{ dnsnameservers }}"       
+      register: subnet_out
+      ignore_errors: yes

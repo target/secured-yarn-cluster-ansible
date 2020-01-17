@@ -1,0 +1,145 @@
+<?xml version="1.0"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+<configuration>
+
+<!-- Site specific YARN configuration properties
+  <property>
+    <name>yarn.resourcemanager.resource-tracker.address</name>
+    <value>{{ MASTER_NODE }}:8031</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.address</name>
+    <value>{{ MASTER_NODE }}:8032</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.scheduler.address</name>
+    <value>{{ MASTER_NODE }}:8030</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.admin.address</name>
+    <value>{{ MASTER_NODE }}:8033</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.webapp.address</name>
+    <value>{{ MASTER_NODE }}:8088</value>
+  </property>
+ <property>
+    <name>yarn.resourcemanager.bind-host</name>
+    <value>0.0.0.0</value>
+  </property>-->
+  <property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+  </property>
+  <property>
+        <name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name>
+        <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+  </property>
+  <property><name>yarn.scheduler.maximum-allocation-mb</name><value>28672</value></property>
+  <property><name>yarn.nodemanager.resource.cpu-vcores</name><value>6</value></property>
+  <property><name>yarn.scheduler.maximum-allocation-vcores</name><value>6</value></property>
+  <property><name>yarn.nodemanager.resource.memory-mb</name><value>28672</value></property>
+  <property><name>yarn.resourcemanager.am.max-attempts</name><value>2</value></property>
+
+  <!--######## HA YARN PROPERTIES FOR ZOOKEEPER-->
+  <property>
+		<name>yarn.resourcemanager.ha.enabled</name>
+		<value>true</value>
+  </property>
+  <property>
+		<name>yarn.resourcemanager.zk-address</name>
+		<value>{{ zookeeper_ips | trim }}</value>
+  </property>
+  <property>
+		<name>yarn.resourcemanager.recovery.enabled</name>
+		<value>true</value>
+  </property>
+  <property>
+		<name>yarn.resourcemanager.ha.automatic-failover.enabled</name>
+		<value>true</value>
+ </property>
+
+  <!-- ############## HA YARN FOR ZOOKEEPER-->
+  <!-- ######################################################## -->
+  <!-- Kerberos setting -->
+  <!-- resource manager secure configuration info -->
+  <property>
+    <name>yarn.resourcemanager.principal</name>
+    <value>{{ yarn_username }}/_HOST@{{ KDC_REALM }}</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.keytab</name>
+    <value>{{ KDC_KEYTAB }}/{{ yarn_username }}-{{ ansible_hostname }}.service.keytab</value>
+  </property>
+  <!-- remember the principal for the node manager is the principal for the host this yarn-site.xml file is on -->
+  <!-- these (next four) need only be set on node manager nodes -->
+  <property>
+    <name>yarn.nodemanager.principal</name>
+    <value>{{ yarn_username }}/_HOST@{{ KDC_REALM }}</value>
+  </property>
+  <property>
+    <name>yarn.nodemanager.keytab</name>
+    <value>{{ KDC_KEYTAB }}/{{ yarn_username }}-{{ ansible_hostname }}.service.keytab</value>
+  </property>
+  <property>
+    <name>yarn.nodemanager.container-executor.class</name>
+    <value>org.apache.hadoop.yarn.server.nodemanager.LinuxContainerExecutor</value>
+  </property>
+  <property>
+    <name>yarn.nodemanager.linux-container-executor.group</name>
+    <value>yarn</value>
+  </property>
+
+  {% for host in groups['masternode_group'] %}
+   <property>
+   <name>yarn.resourcemanager.hostname.rm{{loop.index}}</name>
+   <value>{{ hostvars[host].inventory_hostname }}</value>
+   </property>
+   <property>
+     <name>yarn.resourcemanager.resource-tracker.address.rm{{loop.index}}</name>
+     <value>{{ hostvars[host].inventory_hostname }}:8031</value>
+   </property>
+   <property>
+     <name>yarn.resourcemanager.address.rm{{loop.index}}</name>
+     <value>{{ hostvars[host].inventory_hostname }}:8032</value>
+   </property>
+   <property>
+     <name>yarn.resourcemanager.scheduler.address.rm{{loop.index}}</name>
+     <value>{{ hostvars[host].inventory_hostname }}:8030</value>
+   </property>
+   <property>
+     <name>yarn.resourcemanager.admin.address.rm{{loop.index}}</name>
+     <value>{{ hostvars[host].inventory_hostname }}:8033</value>
+   </property>
+   <property>
+     <name>yarn.resourcemanager.webapp.address.rm{{loop.index}}</name>
+     <value>{{ hostvars[host].inventory_hostname }}:8088</value>
+   </property>
+  <property>
+     <name>yarn.resourcemanager.bind-host.rm{{loop.index}}</name>
+     <value>0.0.0.0</value>
+   </property>
+   {% endfor %}
+  <property>
+    <name>yarn.resourcemanager.cluster-id</name>
+    <value>{{ cluster_name }}</value>
+  </property>
+  <property>
+   <name>yarn.resourcemanager.ha.rm-ids</name>
+   <value>{% for host in groups['masternode_group']  %}rm{{ loop.index }}{% if not loop.last %},{% endif %}{% endfor %}</value>
+  </property>
+
+
+</configuration>

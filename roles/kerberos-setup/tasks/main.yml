@@ -1,0 +1,84 @@
+---
+ - set_fact: kdc_hostname={{ groups['kdc_group']|map('extract', hostvars, ['ansible_host'])|list|first }}
+
+ - debug:
+     msg: "{{ kdc_hostname }}"
+
+ - name: update the hostname ( remove novalocal )
+   shell: hostnamectl set-hostname {{ inventory_hostname }}
+   register: update_hostname
+
+ - name: set managed host flag to false ( not to update /etc/hosts at system boot )
+   lineinfile:
+     dest: /etc/cloud/cloud.cfg
+     state: present
+     regexp: '^manage_etc_hosts:'
+     line: 'manage_etc_hosts: false'
+
+ - replace:
+     path: '/etc/hosts'
+     regexp: '127.0.0.1'
+     replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+ - replace:
+     path: '/etc/hosts'
+     regexp: '{{ inventory_hostname }}.novalocal'
+     replace: '{{ inventory_hostname }}'
+
+ - name: Commenting a line in /etc/hosts containing IPv6
+   replace:
+     path: /etc/hosts
+     regexp: '(.*::1.*)'
+     replace: '#\1'
+
+ - name: Add IP address of all hosts to all hosts
+   lineinfile:
+     dest: /etc/hosts
+     regexp: '.*{{ hostvars[item].ansible_host }} {{ item }}$'
+     line: "{{ hostvars[item].ansible_host }} {{ item }}"
+     #line: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} {{ item }}"
+     state: present
+   with_items: "{{ groups['kdc_group'] }}"
+
+ - name: Install Kerberos Server 
+   yum: name={{ item }} state=latest
+   with_items:
+     - krb5-workstation 
+     - krb5-libs 
+#     - krb5-auth-dialog
+     - krb5-server
+
+ - replace:
+     path: '/var/kerberos/krb5kdc/kdc.conf'
+     regexp: 'EXAMPLE.COM'
+     replace: '{{ inventory_hostname }}'
+
+ - name: copy the krb5 conf file
+   template:
+     src: krb5.conf.j2
+     dest: /etc/krb5.conf
+     force: yes
+     backup: yes
+
+ - replace:
+     path: '/var/kerberos/krb5kdc/kadm5.acl'
+     regexp: 'EXAMPLE.COM'
+     replace: '{{ REALM_NAME }}'
+
+ - name: Create The Initial kerberos db
+   shell: kdb5_util -P {{ KDC_PASSWORD }} create -s; touch /var/kerberos/master_db_created creates=/var/kerberos/master_db_created
+
+ - name: Create an admin for the administering the kerberos database
+   shell: kadmin.local -q "addprinc -pw {{ KDC_PASSWORD }} {{ KDC_ADMIN_USER }}/admin"; touch /var/kerberos/admin_created creates=/var/kerberos/admin_created
+
+ - name: Start The krb5kdc service
+   systemd:
+     name: krb5kdc 
+     state: started
+     enabled: yes
+
+ - name: Start The kadmin service
+   systemd:
+     name: kadmin
+     state: started
+     enabled: yes

@@ -1,0 +1,41 @@
+---
+      - name: Include version-specific variables for CentOS/RHEL.
+        include_vars: "RedHat.yml"
+        when: ansible_distribution == 'CentOS' or
+              ansible_distribution == 'Red Hat Enterprise Linux' or
+              ansible_distribution == 'RedHat'
+
+      - name: Include version-specific variables for Debian.
+        include_vars: "{{ ansible_distribution|title }}.yml"
+        when: ansible_os_family == 'Debian'
+
+      - name: Define java_packages.
+        set_fact:
+          java_packages: "{{ java_packages | list }}"
+        when: java_packages is not defined
+
+# install JDK Based On Linux OS Falvors.
+      - include_tasks: RedHat.yml
+        when: ansible_os_family == 'RedHat'
+
+      - include_tasks: Debian.yml
+        when: ansible_os_family == 'Debian'
+
+# Environment Setup.
+      - name: Set JAVA_HOME if configured.
+        template:
+          src: java_home.sh.j2
+          dest: /etc/profile.d/java_home.sh
+          mode: 0644
+        when: java_home is defined and java_home
+
+      - name: Install wget and krb5 libs util
+        become: yes
+        yum:
+          name: "{{ item }}"
+          state: present
+        with_items:
+           - wget
+           - krb5-workstation
+           - krb5-libs
+           - nfs-utils

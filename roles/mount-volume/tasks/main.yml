@@ -1,0 +1,36 @@
+---
+      - name: unmount the default volume in current host {{ansible_hostname}} which is created by OST
+        become: yes
+        become_user: root
+        become_method: sudo
+        mount:
+          path: /mnt
+          src: /dev/vdb
+          fstype: auto
+          state: absent
+
+      - name: Creates directory
+        file: path=/mnt/data state=directory
+        become: yes
+        become_user: root
+        become_method: sudo
+
+      - name: Create a ext4 filesystem on /dev/vdb for {{ansible_hostname}}
+        become: yes
+        become_user: root
+        become_method: sudo
+        filesystem:
+          fstype: ext4
+          dev: /dev/vdb
+      
+
+      - name: mount volume in current host {{ansible_hostname}}
+        become: yes
+        become_user: root
+        become_method: sudo
+        mount:
+          path: /mnt/data
+          src: /dev/vdb
+          fstype: ext4
+          state: mounted
+          opts: nofail

@@ -1,0 +1,23 @@
+{
+"state":"present",
+"noOfKerberos":[ 1 ],
+"kerberosOsFlavor":"gp-8cpu-16GB",
+"kerberosNamePrefix":"kdc-test",
+"av_z_kerberos":[ "az1"],
+"sshKeyName":"<SSH_KEY_NAME>",
+"publicKeyFile":"<PUBLIC_KEY_FILE_PATH>",
+"securityGroups":"<SECURITYGROUP_NAME>",
+"image":"<OS_IMAGE_NAME>",
+"cacert":"<CA_CERT_PATH>",
+"networkName":"<OS_NETWORK_NAME>",
+"subnetName":"<OS_SUBNET_NAME>",
+"cidr":"<CIDR_IP_RANGE>",
+"gatewayIp":"<INTERNET_GATEWAY_IP>",
+"router":"<OS_ROUTER_NAME>",
+"KDC_HOSTNAME":"<KERBEROS_HOSTNAME>",
+"KDC_REALM":"<KERBEROS_REALM>",
+"KDC_ADMIN_USER": "<KERBEROS_ADMIN_USER>",
+"userName" : "<USERNAME_WITH_SUDO_FOR_PROVISIONING_KERBEROS_SERVER>",
+"certs_browseconfig": "<CA_CERTIFICATE_URL_OR_PATH>",
+"dnsnameservers": ["<LIST_OF_DNS_SERVERS_REQUIRED_FOR_OPENSTACK>"]
+}
